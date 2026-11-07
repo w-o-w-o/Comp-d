@@ -1,3 +1,6 @@
+import Link from "next/link";
+import Nav from "./Nav";
+
 const steps = [
   {
     title: "Enter an address",
@@ -113,21 +116,7 @@ const plans = [
 export default function Home() {
   return (
     <>
-      <nav className="nav">
-        <div className="wrap nav-inner">
-          <a href="#top" className="logo">
-            Comp&apos;d
-          </a>
-          <div className="nav-links">
-            <a href="#how">How it works</a>
-            <a href="#who">Who it&apos;s for</a>
-            <a href="#pricing">Pricing</a>
-          </div>
-          <a href="#pricing" className="btn btn-small">
-            Get started
-          </a>
-        </div>
-      </nav>
+      <Nav />
 
       <main id="top">
         <section className="wrap hero">
@@ -141,9 +130,9 @@ export default function Home() {
               deal and what to look at instead.
             </p>
             <div className="hero-actions">
-              <a href="#pricing" className="btn">
+              <Link href="/sign-up" className="btn">
                 Try it free
-              </a>
+              </Link>
               <a href="#how" className="btn btn-ghost">
                 See how it works
               </a>
@@ -271,9 +260,9 @@ export default function Home() {
                       <li key={f}>{f}</li>
                     ))}
                   </ul>
-                  <a href="#top" className={`btn${p.featured ? "" : " btn-ghost"}`}>
+                  <Link href="/sign-up" className={`btn${p.featured ? "" : " btn-ghost"}`}>
                     {p.cta}
-                  </a>
+                  </Link>
                 </div>
               ))}
             </div>
@@ -283,9 +272,9 @@ export default function Home() {
         <section className="wrap closing">
           <h2>Your next home should be a sure thing.</h2>
           <p>Compare it before you commit.</p>
-          <a href="#pricing" className="btn">
+          <Link href="/sign-up" className="btn">
             Try Comp&apos;d free
-          </a>
+          </Link>
         </section>
       </main>
 
