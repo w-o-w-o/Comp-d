@@ -1,17 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   AdvancedMarker,
   Circle,
   ControlPosition,
+  InfoWindow,
   Map,
   Pin,
+  RenderingType,
   useMap,
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import SearchBar from "../search/SearchBar";
+import HomePhoto from "./HomePhoto";
 import useComparables from "./useComparables";
+import { animateCamera, cameraForCircle } from "./camera";
 import { formatFacts, formatMiles, formatPrice, formatShortPrice } from "./format";
 import {
   DEFAULT_RADIUS_MILES,
@@ -25,23 +30,23 @@ import {
 
 const PRESETS_SORTED = [...RADIUS_PRESETS_MILES].sort((a, b) => a - b);
 
-// Full-screen map of the searched property with a floating panel on top.
-// The comparison area is a circle the user can resize by dragging its edge
-// handles or by picking a preset distance. Active listings inside it are shown
-// as price pins and listed in the panel.
+// Results flow, in stages:
+//   "arriving" — the map zooms in from far away to the property's pin
+//   "radius"   — the user picks a search radius (presets or dragging) and rent/buy
+//   "results"  — estimate and nearby listings load, as price pins and photo cards
 export default function ResultsView({ address, placeId }) {
   const places = useMapsLibrary("places");
   const [lookup, setLookup] = useState({ status: "loading" });
+  const [stage, setStage] = useState("arriving");
   const [radiusMiles, setRadiusMiles] = useState(DEFAULT_RADIUS_MILES);
   const [mode, setMode] = useState("rent");
   const [selectedId, setSelectedId] = useState(null);
-  // Bumped whenever the map should zoom to fit the whole circle.
-  const [fitRequest, setFitRequest] = useState(0);
+  // Bumped whenever the camera should re-frame the circle (preset picked).
+  const [frameRequest, setFrameRequest] = useState(0);
 
   useEffect(() => {
     if (!places) return;
     let cancelled = false;
-    setLookup({ status: "loading" });
 
     (async () => {
       try {
@@ -59,13 +64,13 @@ export default function ResultsView({ address, placeId }) {
           place = found[0];
         }
         if (!place?.location) throw new Error("Address not found");
-        if (cancelled) return;
-        setLookup({
-          status: "ready",
-          position: place.location.toJSON(),
-          formattedAddress: place.formattedAddress,
-        });
-        setFitRequest((n) => n + 1);
+        if (!cancelled) {
+          setLookup({
+            status: "ready",
+            position: place.location.toJSON(),
+            formattedAddress: place.formattedAddress,
+          });
+        }
       } catch (err) {
         console.error("Map lookup failed:", err);
         if (!cancelled) setLookup({ status: "error" });
@@ -79,7 +84,8 @@ export default function ResultsView({ address, placeId }) {
 
   const ready = lookup.status === "ready";
   const comps = useComparables({
-    position: ready ? lookup.position : null,
+    // Nothing is fetched (or billed) until the user confirms a radius.
+    position: ready && stage === "results" ? lookup.position : null,
     address: ready ? lookup.formattedAddress : null,
     mode,
     radiusMiles,
@@ -88,7 +94,7 @@ export default function ResultsView({ address, placeId }) {
 
   function pickPreset(miles) {
     setRadiusMiles(miles);
-    setFitRequest((n) => n + 1);
+    setFrameRequest((n) => n + 1);
   }
 
   function handleDragResize(meters) {
@@ -103,14 +109,20 @@ export default function ResultsView({ address, placeId }) {
     setSelectedId(null);
   }
 
+  const radiusControls = (
+    <RadiusControls radiusMiles={radiusMiles} onPreset={pickPreset} />
+  );
+  const modeControls = <ModeToggle mode={mode} onChange={pickMode} />;
+
   return (
     <div className="results-full">
       <div className="results-map">
         {ready && (
           <Map
             mapId={MAP_ID}
+            renderingType={RenderingType.VECTOR}
             defaultCenter={lookup.position}
-            defaultZoom={13}
+            defaultZoom={4}
             gestureHandling="greedy"
             colorScheme="FOLLOW_SYSTEM"
             streetViewControl={false}
@@ -120,127 +132,169 @@ export default function ResultsView({ address, placeId }) {
             onClick={() => setSelectedId(null)}
             style={{ width: "100%", height: "100%" }}
           >
-            <Circle
-              center={lookup.position}
-              radius={radiusMiles * METERS_PER_MILE}
-              editable
-              clickable={false}
-              onRadiusChanged={handleDragResize}
-              strokeColor="#2fa77a"
-              strokeOpacity={0.9}
-              strokeWeight={2}
-              fillColor="#2fa77a"
-              fillOpacity={0.12}
-            />
+            {stage !== "arriving" && (
+              <Circle
+                center={lookup.position}
+                radius={radiusMiles * METERS_PER_MILE}
+                editable
+                clickable={false}
+                onRadiusChanged={handleDragResize}
+                strokeColor="#2fa77a"
+                strokeOpacity={0.9}
+                strokeWeight={2}
+                fillColor="#2fa77a"
+                fillOpacity={0.12}
+              />
+            )}
 
-            {comps.nearby.map((l) => (
-              <AdvancedMarker
-                key={l.id}
-                position={l}
-                title={`${l.address} — ${formatPrice(l.price, mode)}`}
-                zIndex={l.id === selectedId ? 1000 : undefined}
-                onClick={() => setSelectedId(l.id)}
+            {stage === "results" &&
+              comps.nearby.map((l) => (
+                <AdvancedMarker
+                  key={l.id}
+                  position={l}
+                  title={`${l.address} — ${formatPrice(l.price, mode)}`}
+                  zIndex={l.id === selectedId ? 1000 : undefined}
+                  onClick={() => setSelectedId(l.id)}
+                >
+                  <div className={l.id === selectedId ? "price-pin price-pin-selected" : "price-pin"}>
+                    {formatShortPrice(l.price)}
+                  </div>
+                </AdvancedMarker>
+              ))}
+
+            {selected && (
+              <InfoWindow
+                position={selected}
+                pixelOffset={[0, -28]}
+                headerDisabled
+                onCloseClick={() => setSelectedId(null)}
               >
-                <div className={l.id === selectedId ? "price-pin price-pin-selected" : "price-pin"}>
-                  {formatShortPrice(l.price)}
-                </div>
-              </AdvancedMarker>
-            ))}
+                <ListingCard listing={selected} mode={mode} compact />
+              </InfoWindow>
+            )}
 
             <AdvancedMarker position={lookup.position} title={lookup.formattedAddress} zIndex={2000}>
               <Pin background="#1f7a5a" borderColor="#145a42" glyphColor="#ffffff" />
             </AdvancedMarker>
 
-            <FitCircle
-              center={lookup.position}
+            <CameraDirector
+              stage={stage}
+              position={lookup.position}
               radiusMeters={radiusMiles * METERS_PER_MILE}
-              request={fitRequest}
+              frameRequest={frameRequest}
+              onArrived={() => setStage("radius")}
             />
             <PanToListing listing={selected} />
           </Map>
         )}
       </div>
 
-      <aside className="results-panel">
-        <SearchBar initialAddress={address} autoFocus={false} />
-
-        <div className="panel-section">
-          <p className="eyebrow">Comparing</p>
-          <h1>{address}</h1>
-          {ready && lookup.formattedAddress !== address && (
-            <p className="panel-muted">{lookup.formattedAddress}</p>
-          )}
-          {!MAPS_KEY && (
-            <p className="panel-muted">
-              Add a Google Maps API key to show the property on a map.
-            </p>
-          )}
-          {lookup.status === "error" && (
-            <p className="panel-error">
-              We couldn&apos;t find that address on the map. Try searching again and
-              picking an address from the suggestions.
-            </p>
-          )}
+      {stage !== "results" && (
+        <div className="flow-chip">
+          <span className="flow-chip-address">{ready ? lookup.formattedAddress : address}</span>
+          <Link href="/search">New search</Link>
         </div>
+      )}
 
-        {ready && (
-          <>
-            <div className="panel-section">
-              <div className="mode-toggle" role="group" aria-label="Looking to rent or buy">
-                <button
-                  type="button"
-                  className={mode === "rent" ? "chip chip-active" : "chip"}
-                  aria-pressed={mode === "rent"}
-                  onClick={() => pickMode("rent")}
-                >
-                  Renting
-                </button>
-                <button
-                  type="button"
-                  className={mode === "buy" ? "chip chip-active" : "chip"}
-                  aria-pressed={mode === "buy"}
-                  onClick={() => pickMode("buy")}
-                >
-                  Buying
-                </button>
-              </div>
-              <Estimate comps={comps} mode={mode} />
-            </div>
+      {(!MAPS_KEY || lookup.status === "error") && (
+        <div className="flow-card">
+          <h2>{MAPS_KEY ? "We couldn't find that address" : "Maps isn't set up"}</h2>
+          <p className="panel-muted">
+            {MAPS_KEY
+              ? "Try searching again and picking an address from the suggestions."
+              : "Add a Google Maps API key to show the property on a map."}
+          </p>
+          <Link href="/search" className="btn">
+            New search
+          </Link>
+        </div>
+      )}
 
-            <div className="panel-section">
-              <div className="radius-head">
-                <h2>Search radius</h2>
-                <span className="radius-value">{formatMiles(radiusMiles)}</span>
-              </div>
-              <div className="radius-presets" role="group" aria-label="Search radius presets">
-                {PRESETS_SORTED.map((miles) => (
-                  <button
-                    key={miles}
-                    type="button"
-                    className={Math.abs(radiusMiles - miles) < 0.001 ? "chip chip-active" : "chip"}
-                    aria-pressed={Math.abs(radiusMiles - miles) < 0.001}
-                    onClick={() => pickPreset(miles)}
-                  >
-                    {formatMiles(miles)}
-                  </button>
-                ))}
-              </div>
-              <p className="panel-muted">
-                Or drag the white handles on the circle&apos;s edge to set your own.
-              </p>
-            </div>
+      {ready && stage === "radius" && (
+        <div className="flow-card" role="dialog" aria-labelledby="radius-title">
+          <h2 id="radius-title">Choose your radius</h2>
+          <p className="panel-muted">
+            Drag the white handles on the circle, or pick a distance.
+          </p>
+          {radiusControls}
+          <div className="flow-card-row">
+            <span className="flow-card-label">I&apos;m looking to</span>
+            {modeControls}
+          </div>
+          <button type="button" className="btn flow-card-go" onClick={() => setStage("results")}>
+            Show homes
+          </button>
+        </div>
+      )}
 
-            <Listings
-              comps={comps}
-              mode={mode}
-              radiusMiles={radiusMiles}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-            />
-          </>
-        )}
-      </aside>
+      {ready && stage === "results" && (
+        <aside className="results-panel">
+          <SearchBar initialAddress={address} autoFocus={false} />
+
+          <div className="panel-section">
+            <p className="eyebrow">Comparing</p>
+            <h1>{lookup.formattedAddress}</h1>
+            <div className="panel-row">{modeControls}</div>
+            <Estimate comps={comps} mode={mode} />
+          </div>
+
+          <div className="panel-section">{radiusControls}</div>
+
+          <Listings
+            comps={comps}
+            mode={mode}
+            radiusMiles={radiusMiles}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+          />
+        </aside>
+      )}
     </div>
+  );
+}
+
+function ModeToggle({ mode, onChange }) {
+  return (
+    <div className="mode-toggle" role="group" aria-label="Looking to rent or buy">
+      {[
+        ["rent", "Rent"],
+        ["buy", "Buy"],
+      ].map(([value, label]) => (
+        <button
+          key={value}
+          type="button"
+          className={mode === value ? "chip chip-active" : "chip"}
+          aria-pressed={mode === value}
+          onClick={() => onChange(value)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function RadiusControls({ radiusMiles, onPreset }) {
+  return (
+    <>
+      <div className="radius-head">
+        <h2>Search radius</h2>
+        <span className="radius-value">{formatMiles(radiusMiles)}</span>
+      </div>
+      <div className="radius-presets" role="group" aria-label="Search radius presets">
+        {PRESETS_SORTED.map((miles) => (
+          <button
+            key={miles}
+            type="button"
+            className={Math.abs(radiusMiles - miles) < 0.001 ? "chip chip-active" : "chip"}
+            aria-pressed={Math.abs(radiusMiles - miles) < 0.001}
+            onClick={() => onPreset(miles)}
+          >
+            {formatMiles(miles)}
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -297,55 +351,94 @@ function Listings({ comps, mode, radiusMiles, selectedId, onSelect }) {
                 className={l.id === selectedId ? "listing listing-selected" : "listing"}
                 onClick={() => onSelect(l.id)}
               >
-                <span className="listing-price">{formatPrice(l.price, mode)}</span>
-                <span className="listing-address">{l.address}</span>
-                <span className="listing-facts">
-                  {[formatFacts(l), formatMiles(l.distance) + " away"].filter(Boolean).join(" · ")}
-                </span>
-                {l.id === selectedId && (
-                  <span className="listing-extra">
-                    {[
-                      l.type,
-                      l.yearBuilt && `Built ${l.yearBuilt}`,
-                      l.daysOnMarket != null && `${l.daysOnMarket} days listed`,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                )}
+                <ListingCard listing={l} mode={mode} />
               </button>
             </li>
           ))}
         </ul>
       )}
-      <p className="panel-credit">Listing data from RentCast</p>
+      <p className="panel-credit">Listing data from RentCast · Photos from Google Street View</p>
     </div>
   );
 }
 
-// Zooms the map so the whole circle is visible, leaving room for the panel.
-function FitCircle({ center, radiusMeters, request }) {
+// Photo card used in the panel list and in the map popup.
+function ListingCard({ listing: l, mode, compact = false }) {
+  const details = [
+    l.type,
+    l.yearBuilt && `Built ${l.yearBuilt}`,
+    l.daysOnMarket != null && `${l.daysOnMarket} days listed`,
+  ].filter(Boolean);
+
+  return (
+    <div className={compact ? "home-card home-card-compact" : "home-card"}>
+      <HomePhoto lat={l.lat} lng={l.lng} alt={`Street view of ${l.address}`} />
+      <div className="home-card-body">
+        <span className="listing-price">{formatPrice(l.price, mode)}</span>
+        <span className="listing-facts">
+          {[formatFacts(l), `${formatMiles(l.distance)} away`].filter(Boolean).join(" · ")}
+        </span>
+        <span className="listing-address">{l.address}</span>
+        {compact && details.length > 0 && (
+          <span className="listing-facts">{details.join(" · ")}</span>
+        )}
+        {compact && (
+          <a
+            className="home-card-link"
+            href={`https://www.zillow.com/homes/${encodeURIComponent(l.address)}_rb/`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View on Zillow ↗
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Space (in pixels) covered by floating UI at each stage, so the circle is
+// framed in the visible part of the map.
+function insetFor(stage) {
+  const narrow = window.innerWidth < 760;
+  if (stage === "radius") {
+    return narrow
+      ? { top: 64, bottom: 330, left: 16, right: 16 }
+      : { top: 72, bottom: 290, left: 40, right: 40 };
+  }
+  return narrow
+    ? { top: window.innerHeight * 0.45, bottom: 16, left: 16, right: 16 }
+    : { top: 40, bottom: 40, left: 450, right: 40 };
+}
+
+// Drives the camera: the zoom-in on arrival, then framing the circle whenever
+// the stage changes or a preset radius is picked.
+function CameraDirector({ stage, position, radiusMeters, frameRequest, onArrived }) {
   const map = useMap();
+  const radiusRef = useRef(radiusMeters);
+  radiusRef.current = radiusMeters;
+  const onArrivedRef = useRef(onArrived);
+  onArrivedRef.current = onArrived;
 
   useEffect(() => {
-    if (!map || !request) return;
-    const latDelta = radiusMeters / 111320;
-    const lngDelta = radiusMeters / (111320 * Math.cos((center.lat * Math.PI) / 180));
-    const bounds = {
-      north: center.lat + latDelta,
-      south: center.lat - latDelta,
-      east: center.lng + lngDelta,
-      west: center.lng - lngDelta,
-    };
-    const narrow = window.innerWidth < 760;
-    map.fitBounds(
-      bounds,
-      narrow
-        ? { top: 300, bottom: 24, left: 24, right: 24 }
-        : { top: 48, bottom: 48, left: 460, right: 48 }
-    );
-    // Only refit when asked (new address or preset), not while dragging.
-  }, [map, request]);
+    if (!map) return;
+    if (stage === "arriving") {
+      // Short pause so the starting view registers before the zoom.
+      let cancel = () => {};
+      const timer = setTimeout(() => {
+        cancel = animateCamera(map, { center: position, zoom: 16 }, 2400, () =>
+          setTimeout(() => onArrivedRef.current(), 350)
+        );
+      }, 400);
+      return () => {
+        clearTimeout(timer);
+        cancel();
+      };
+    }
+    const target = cameraForCircle(map, position, radiusRef.current, insetFor(stage));
+    return animateCamera(map, target, 900);
+    // Re-frame on stage changes and preset picks, not on every drag update.
+  }, [map, stage, position, frameRequest]);
 
   return null;
 }

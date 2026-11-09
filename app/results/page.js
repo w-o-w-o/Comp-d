@@ -25,7 +25,8 @@ export default async function ResultsPage({ searchParams }) {
       <Nav />
       <MapsProvider>
         <main>
-          <ResultsView address={address} placeId={placeId} />
+          {/* key: a new search restarts the zoom-in flow */}
+          <ResultsView key={placeId || address} address={address} placeId={placeId} />
         </main>
       </MapsProvider>
     </>
