@@ -585,8 +585,14 @@ h3 {
   color: #5b625e;
 }
 
-.home-card-link {
+.home-card-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
   margin-top: 4px;
+}
+
+.home-card-link {
   color: #1f7a5a;
   font-weight: 600;
   font-size: 0.85rem;

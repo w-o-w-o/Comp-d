@@ -383,14 +383,28 @@ function ListingCard({ listing: l, mode, compact = false }) {
           <span className="listing-facts">{details.join(" · ")}</span>
         )}
         {compact && (
-          <a
-            className="home-card-link"
-            href={`https://www.zillow.com/homes/${encodeURIComponent(l.address)}_rb/`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View on Zillow ↗
-          </a>
+          <div className="home-card-links">
+            {/* Not every listing is on Zillow; Google finds it on whichever
+                site has it (Apartments.com, Redfin, the property's own site...). */}
+            <a
+              className="home-card-link"
+              href={`https://www.google.com/search?q=${encodeURIComponent(
+                `${l.address} ${mode === "rent" ? "for rent" : "for sale"}`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Find this listing ↗
+            </a>
+            <a
+              className="home-card-link"
+              href={`https://www.zillow.com/homes/${encodeURIComponent(l.address)}_rb/`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Zillow ↗
+            </a>
+          </div>
         )}
       </div>
     </div>
