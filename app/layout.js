@@ -12,8 +12,8 @@ export default function RootLayout({ children }) {
     <ClerkProvider
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
-      signInFallbackRedirectUrl="/account"
-      signUpFallbackRedirectUrl="/account"
+      signInFallbackRedirectUrl="/search"
+      signUpFallbackRedirectUrl="/search"
       afterSignOutUrl="/"
       appearance={{ variables: { colorPrimary: "#1f7a5a" } }}
     >

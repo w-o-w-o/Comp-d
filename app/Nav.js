@@ -23,6 +23,9 @@ export default function Nav() {
             </Link>
           </Show>
           <Show when="signed-in">
+            <Link href="/search" className="nav-login">
+              Search
+            </Link>
             <Link href="/account" className="nav-login">
               My account
             </Link>

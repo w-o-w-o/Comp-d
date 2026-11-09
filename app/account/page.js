@@ -50,11 +50,14 @@ export default async function AccountPage() {
         </div>
 
         <div className="account-actions">
+          <Link href="/search" className="btn">
+            Start a search
+          </Link>
           <Link href="/" className="btn btn-ghost">
             Back to home
           </Link>
           <SignOutButton>
-            <button className="btn">Log out</button>
+            <button className="btn btn-ghost">Log out</button>
           </SignOutButton>
         </div>
       </main>
