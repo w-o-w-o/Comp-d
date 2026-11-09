@@ -69,7 +69,9 @@ export default function AiRecommendation({ ai, listingsById, mode, onSelect, can
       )}
 
       {ai.status === "loading" && !ai.stale && (
-        <p className="panel-muted ai-loading">Comparing homes in your radius…</p>
+        <p className="panel-muted ai-loading">
+          Comparing homes in your radius… this can take up to a minute.
+        </p>
       )}
 
       {ai.status === "error" && !ai.stale && (
