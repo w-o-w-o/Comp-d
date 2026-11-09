@@ -11,6 +11,8 @@ import {
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import SearchBar from "../search/SearchBar";
+import useComparables from "./useComparables";
+import { formatFacts, formatMiles, formatPrice, formatShortPrice } from "./format";
 import {
   DEFAULT_RADIUS_MILES,
   MAP_ID,
@@ -25,11 +27,14 @@ const PRESETS_SORTED = [...RADIUS_PRESETS_MILES].sort((a, b) => a - b);
 
 // Full-screen map of the searched property with a floating panel on top.
 // The comparison area is a circle the user can resize by dragging its edge
-// handles or by picking a preset distance.
+// handles or by picking a preset distance. Active listings inside it are shown
+// as price pins and listed in the panel.
 export default function ResultsView({ address, placeId }) {
   const places = useMapsLibrary("places");
   const [lookup, setLookup] = useState({ status: "loading" });
   const [radiusMiles, setRadiusMiles] = useState(DEFAULT_RADIUS_MILES);
+  const [mode, setMode] = useState("rent");
+  const [selectedId, setSelectedId] = useState(null);
   // Bumped whenever the map should zoom to fit the whole circle.
   const [fitRequest, setFitRequest] = useState(0);
 
@@ -72,6 +77,15 @@ export default function ResultsView({ address, placeId }) {
     };
   }, [places, address, placeId]);
 
+  const ready = lookup.status === "ready";
+  const comps = useComparables({
+    position: ready ? lookup.position : null,
+    address: ready ? lookup.formattedAddress : null,
+    mode,
+    radiusMiles,
+  });
+  const selected = comps.nearby.find((l) => l.id === selectedId) || null;
+
   function pickPreset(miles) {
     setRadiusMiles(miles);
     setFitRequest((n) => n + 1);
@@ -84,7 +98,10 @@ export default function ResultsView({ address, placeId }) {
     setRadiusMiles((current) => (Math.abs(current - clamped) < 0.001 ? current : clamped));
   }
 
-  const ready = lookup.status === "ready";
+  function pickMode(next) {
+    setMode(next);
+    setSelectedId(null);
+  }
 
   return (
     <div className="results-full">
@@ -98,16 +115,16 @@ export default function ResultsView({ address, placeId }) {
             colorScheme="FOLLOW_SYSTEM"
             streetViewControl={false}
             fullscreenControl={false}
+            clickableIcons={false}
             mapTypeControlOptions={{ position: ControlPosition.TOP_RIGHT }}
+            onClick={() => setSelectedId(null)}
             style={{ width: "100%", height: "100%" }}
           >
-            <AdvancedMarker position={lookup.position} title={lookup.formattedAddress}>
-              <Pin background="#1f7a5a" borderColor="#145a42" glyphColor="#ffffff" />
-            </AdvancedMarker>
             <Circle
               center={lookup.position}
               radius={radiusMiles * METERS_PER_MILE}
               editable
+              clickable={false}
               onRadiusChanged={handleDragResize}
               strokeColor="#2fa77a"
               strokeOpacity={0.9}
@@ -115,11 +132,31 @@ export default function ResultsView({ address, placeId }) {
               fillColor="#2fa77a"
               fillOpacity={0.12}
             />
+
+            {comps.nearby.map((l) => (
+              <AdvancedMarker
+                key={l.id}
+                position={l}
+                title={`${l.address} — ${formatPrice(l.price, mode)}`}
+                zIndex={l.id === selectedId ? 1000 : undefined}
+                onClick={() => setSelectedId(l.id)}
+              >
+                <div className={l.id === selectedId ? "price-pin price-pin-selected" : "price-pin"}>
+                  {formatShortPrice(l.price)}
+                </div>
+              </AdvancedMarker>
+            ))}
+
+            <AdvancedMarker position={lookup.position} title={lookup.formattedAddress} zIndex={2000}>
+              <Pin background="#1f7a5a" borderColor="#145a42" glyphColor="#ffffff" />
+            </AdvancedMarker>
+
             <FitCircle
               center={lookup.position}
               radiusMeters={radiusMiles * METERS_PER_MILE}
               request={fitRequest}
             />
+            <PanToListing listing={selected} />
           </Map>
         )}
       </div>
@@ -147,36 +184,141 @@ export default function ResultsView({ address, placeId }) {
         </div>
 
         {ready && (
-          <div className="panel-section">
-            <div className="radius-head">
-              <h2>Search radius</h2>
-              <span className="radius-value">{formatMiles(radiusMiles)}</span>
-            </div>
-            <div className="radius-presets" role="group" aria-label="Search radius presets">
-              {PRESETS_SORTED.map((miles) => (
+          <>
+            <div className="panel-section">
+              <div className="mode-toggle" role="group" aria-label="Looking to rent or buy">
                 <button
-                  key={miles}
                   type="button"
-                  className={Math.abs(radiusMiles - miles) < 0.001 ? "chip chip-active" : "chip"}
-                  aria-pressed={Math.abs(radiusMiles - miles) < 0.001}
-                  onClick={() => pickPreset(miles)}
+                  className={mode === "rent" ? "chip chip-active" : "chip"}
+                  aria-pressed={mode === "rent"}
+                  onClick={() => pickMode("rent")}
                 >
-                  {formatMiles(miles)}
+                  Renting
                 </button>
-              ))}
+                <button
+                  type="button"
+                  className={mode === "buy" ? "chip chip-active" : "chip"}
+                  aria-pressed={mode === "buy"}
+                  onClick={() => pickMode("buy")}
+                >
+                  Buying
+                </button>
+              </div>
+              <Estimate comps={comps} mode={mode} />
             </div>
-            <p className="panel-muted">
-              Or drag the white handles on the circle&apos;s edge to set your own.
-            </p>
-          </div>
-        )}
 
-        <div className="panel-section panel-upcoming">
-          <p className="panel-muted">
-            Verdict and comparable homes inside this area are coming soon.
-          </p>
-        </div>
+            <div className="panel-section">
+              <div className="radius-head">
+                <h2>Search radius</h2>
+                <span className="radius-value">{formatMiles(radiusMiles)}</span>
+              </div>
+              <div className="radius-presets" role="group" aria-label="Search radius presets">
+                {PRESETS_SORTED.map((miles) => (
+                  <button
+                    key={miles}
+                    type="button"
+                    className={Math.abs(radiusMiles - miles) < 0.001 ? "chip chip-active" : "chip"}
+                    aria-pressed={Math.abs(radiusMiles - miles) < 0.001}
+                    onClick={() => pickPreset(miles)}
+                  >
+                    {formatMiles(miles)}
+                  </button>
+                ))}
+              </div>
+              <p className="panel-muted">
+                Or drag the white handles on the circle&apos;s edge to set your own.
+              </p>
+            </div>
+
+            <Listings
+              comps={comps}
+              mode={mode}
+              radiusMiles={radiusMiles}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
+          </>
+        )}
       </aside>
+    </div>
+  );
+}
+
+function Estimate({ comps, mode }) {
+  if (comps.status === "loading" || comps.status === "idle") {
+    return <p className="panel-muted">Loading property data…</p>;
+  }
+  if (comps.status === "error") {
+    return <p className="panel-error">{comps.message}</p>;
+  }
+  const estimate = comps.data.estimate;
+  if (!estimate?.amount) {
+    return (
+      <p className="panel-muted">
+        No {mode === "rent" ? "rent" : "value"} estimate is available for this address.
+      </p>
+    );
+  }
+  const facts = formatFacts(estimate.subject);
+  return (
+    <div className="estimate">
+      <p className="estimate-label">
+        Estimated {mode === "rent" ? "rent" : "value"} for this property
+      </p>
+      <p className="estimate-amount">{formatPrice(estimate.amount, mode)}</p>
+      {estimate.low && estimate.high && (
+        <p className="panel-muted">
+          Likely range {formatPrice(estimate.low, mode)} – {formatPrice(estimate.high, mode)}
+        </p>
+      )}
+      {facts && <p className="panel-muted">{facts}</p>}
+    </div>
+  );
+}
+
+function Listings({ comps, mode, radiusMiles, selectedId, onSelect }) {
+  if (comps.status !== "ready") return null;
+  const label = mode === "rent" ? "for rent" : "for sale";
+
+  return (
+    <div className="panel-section">
+      <h2>
+        {comps.nearby.length} {comps.nearby.length === 1 ? "home" : "homes"} {label} within{" "}
+        {formatMiles(radiusMiles)}
+      </h2>
+      {comps.nearby.length === 0 ? (
+        <p className="panel-muted">Try a larger radius to see more listings.</p>
+      ) : (
+        <ul className="listing-list">
+          {comps.nearby.map((l) => (
+            <li key={l.id}>
+              <button
+                type="button"
+                className={l.id === selectedId ? "listing listing-selected" : "listing"}
+                onClick={() => onSelect(l.id)}
+              >
+                <span className="listing-price">{formatPrice(l.price, mode)}</span>
+                <span className="listing-address">{l.address}</span>
+                <span className="listing-facts">
+                  {[formatFacts(l), formatMiles(l.distance) + " away"].filter(Boolean).join(" · ")}
+                </span>
+                {l.id === selectedId && (
+                  <span className="listing-extra">
+                    {[
+                      l.type,
+                      l.yearBuilt && `Built ${l.yearBuilt}`,
+                      l.daysOnMarket != null && `${l.daysOnMarket} days listed`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="panel-credit">Listing data from RentCast</p>
     </div>
   );
 }
@@ -208,6 +350,15 @@ function FitCircle({ center, radiusMeters, request }) {
   return null;
 }
 
-function formatMiles(miles) {
-  return `${Math.round(miles * 10) / 10} mi`;
+// Keeps the selected listing in view.
+function PanToListing({ listing }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || !listing) return;
+    const bounds = map.getBounds();
+    if (!bounds?.contains(listing)) map.panTo(listing);
+  }, [map, listing]);
+
+  return null;
 }
