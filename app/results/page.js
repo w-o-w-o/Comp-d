@@ -1,10 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import Nav from "../Nav";
-import SearchBar from "../search/SearchBar";
 import MapsProvider from "../maps/MapsProvider";
-import ResultsMap from "./ResultsMap";
+import ResultsView from "./ResultsView";
 
 export const metadata = { title: "Results — Comp'd" };
 
@@ -26,30 +24,8 @@ export default async function ResultsPage({ searchParams }) {
     <>
       <Nav />
       <MapsProvider>
-        <main className="wrap results">
-          <div className="results-search">
-            <SearchBar initialAddress={address} autoFocus={false} />
-          </div>
-
-          <p className="eyebrow">Comparing</p>
-          <h1>{address}</h1>
-
-          <ResultsMap address={address} placeId={placeId} />
-
-          <div className="results-grid">
-            <div className="card placeholder">
-              <h3>Verdict</h3>
-              <p>Whether this home is worth it, and why, will appear here.</p>
-            </div>
-            <div className="card placeholder">
-              <h3>Comparable homes</h3>
-              <p>Similar homes in your search area, ranked by your priorities.</p>
-            </div>
-          </div>
-
-          <Link href="/search" className="btn btn-ghost">
-            New search
-          </Link>
+        <main>
+          <ResultsView address={address} placeId={placeId} />
         </main>
       </MapsProvider>
     </>
