@@ -130,6 +130,21 @@ h3 {
   display: flex;
   align-items: center;
   gap: 14px;
+  white-space: nowrap;
+}
+
+.nav-links a {
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .nav-links {
+    display: none;
+  }
+
+  .nav-auth {
+    margin-left: auto;
+  }
 }
 
 .nav-login {
@@ -175,9 +190,14 @@ h3 {
   max-width: 640px;
 }
 
-.search-form input {
+.search-field {
+  position: relative;
   flex: 1;
   min-width: 0;
+}
+
+.search-form input {
+  width: 100%;
   padding: 14px 20px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -191,6 +211,48 @@ h3 {
 .search-form input:focus {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+.suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+}
+
+.suggestions li {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.suggestions li.active {
+  background: var(--accent-soft);
+}
+
+.suggestions span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.suggestions .suggestions-credit {
+  cursor: default;
+  align-items: flex-end;
+  padding: 6px 14px 4px;
+  font-size: 0.75rem;
+  color: var(--muted);
 }
 
 .search-form button {
@@ -232,6 +294,39 @@ h3 {
 .placeholder {
   border-style: dashed;
   min-height: 160px;
+}
+
+.map-wrap,
+.map-card {
+  margin-top: 24px;
+}
+
+.map-wrap .map-card {
+  margin-top: 0;
+}
+
+.map-live,
+.map-loading {
+  height: 420px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.map-loading {
+  background: var(--bg-alt);
+}
+
+.map-caption {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+@media (max-width: 600px) {
+  .map-live,
+  .map-loading {
+    height: 300px;
+  }
 }
 
 /* Sign in / sign up / account pages */

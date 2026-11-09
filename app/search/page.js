@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import Nav from "../Nav";
 import SearchBar from "./SearchBar";
+import MapsProvider from "../maps/MapsProvider";
 
 export const metadata = { title: "Search — Comp'd" };
 
@@ -19,7 +20,9 @@ export default async function SearchPage() {
           Enter the house or rental you&apos;re interested in and we&apos;ll
           compare it with similar homes nearby.
         </p>
-        <SearchBar />
+        <MapsProvider>
+          <SearchBar />
+        </MapsProvider>
       </main>
     </>
   );
