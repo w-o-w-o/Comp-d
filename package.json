@@ -8,12 +8,14 @@
     "start": "next start"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.7.0",
     "@clerk/nextjs": "7.9.25",
     "@neondatabase/serverless": "1.2.0",
     "@types/google.maps": "3.66.10",
     "@vis.gl/react-google-maps": "1.10.2",
     "next": "15.5.28",
     "react": "19.1.10",
-    "react-dom": "19.1.10"
+    "react-dom": "19.1.10",
+    "zod": "4.6.7"
   }
 }

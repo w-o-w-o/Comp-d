@@ -16,6 +16,7 @@ import {
 import SearchBar from "../search/SearchBar";
 import HomePhoto from "./HomePhoto";
 import useComparables from "./useComparables";
+import AiRecommendation, { useRecommendation } from "./AiRecommendation";
 import { animateCamera, cameraForCircle } from "./camera";
 import { formatFacts, formatMiles, formatPrice, formatShortPrice } from "./format";
 import {
@@ -91,6 +92,14 @@ export default function ResultsView({ address, placeId }) {
     radiusMiles,
   });
   const selected = comps.nearby.find((l) => l.id === selectedId) || null;
+  const ai = useRecommendation({
+    position: ready && stage === "results" ? lookup.position : null,
+    address: ready ? lookup.formattedAddress : null,
+    mode,
+    radiusMiles,
+  });
+  // globalThis.Map: the built-in Map, since `Map` here is the Google map component.
+  const listingsById = new globalThis.Map(comps.nearby.map((l) => [l.id, l]));
 
   function pickPreset(miles) {
     setRadiusMiles(miles);
@@ -156,7 +165,16 @@ export default function ResultsView({ address, placeId }) {
                   zIndex={l.id === selectedId ? 1000 : undefined}
                   onClick={() => setSelectedId(l.id)}
                 >
-                  <div className={l.id === selectedId ? "price-pin price-pin-selected" : "price-pin"}>
+                  <div
+                    className={[
+                      "price-pin",
+                      ai.picks.includes(l.id) && "price-pin-ai",
+                      l.id === selectedId && "price-pin-selected",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    {ai.picks.includes(l.id) && "★ "}
                     {formatShortPrice(l.price)}
                   </div>
                 </AdvancedMarker>
@@ -237,6 +255,14 @@ export default function ResultsView({ address, placeId }) {
             <div className="panel-row">{modeControls}</div>
             <Estimate comps={comps} mode={mode} />
           </div>
+
+          <AiRecommendation
+            ai={ai}
+            listingsById={listingsById}
+            mode={mode}
+            onSelect={setSelectedId}
+            canRun={comps.status === "ready" && comps.nearby.length > 0}
+          />
 
           <div className="panel-section">{radiusControls}</div>
 

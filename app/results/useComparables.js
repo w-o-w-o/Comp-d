@@ -1,23 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-
-// Smallest server fetch area (miles) that covers the chosen radius.
-function fetchRadiusFor(radiusMiles) {
-  if (radiusMiles <= 5) return 5;
-  if (radiusMiles <= 10) return 10;
-  return 25;
-}
-
-function distanceMiles(a, b) {
-  const toRad = (d) => (d * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 3958.8 * 2 * Math.asin(Math.sqrt(h));
-}
+import { distanceMiles, fetchRadiusFor } from "./geo";
 
 // Loads the property estimate and nearby listings from /api/comps, and returns
 // the listings inside the current radius, nearest first.
