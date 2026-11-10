@@ -16,7 +16,7 @@ import {
 import SearchBar from "../search/SearchBar";
 import HomePhoto from "./HomePhoto";
 import useComparables from "./useComparables";
-import AiRecommendation, { useRecommendation } from "./AiRecommendation";
+import AiRecommendation, { UpgradeButton, useRecommendation } from "./AiRecommendation";
 import { animateCamera, cameraForCircle } from "./camera";
 import { formatFacts, formatMiles, formatPrice, formatShortPrice } from "./format";
 import {
@@ -329,7 +329,12 @@ function Estimate({ comps, mode }) {
     return <p className="panel-muted">Loading property data…</p>;
   }
   if (comps.status === "error") {
-    return <p className="panel-error">{comps.message}</p>;
+    return (
+      <>
+        <p className="panel-error">{comps.message}</p>
+        {comps.upgradeTo && <UpgradeButton tier={comps.upgradeTo} />}
+      </>
+    );
   }
   const estimate = comps.data.estimate;
   if (!estimate?.amount) {

@@ -4,6 +4,7 @@ import { sql } from "../../../lib/db";
 import { BudgetError } from "../../../lib/rentcast";
 import { loadComps } from "../../../lib/comps";
 import { AiLimitError, recommend } from "../../../lib/recommend";
+import { getUserPlan } from "../../../lib/plans";
 import { distanceMiles, fetchRadiusFor } from "../../results/geo";
 
 // The AI call can take a while.
@@ -42,6 +43,14 @@ export async function POST(request) {
     return Response.json({ error: "Invalid radius." }, { status: 400 });
   }
 
+  const { tier, plan } = await getUserPlan(userId);
+  if (plan.aiPerDay === 0) {
+    return Response.json(
+      { error: "AI recommendations are included with Basic and Advanced.", upgradeTo: "basic" },
+      { status: 402 }
+    );
+  }
+
   try {
     const { estimate, listings } = await loadComps({
       lat,
@@ -69,9 +78,16 @@ export async function POST(request) {
       listings: nearby,
       radiusMiles,
       userId,
+      dailyLimit: plan.aiPerDay,
     });
     return Response.json(result);
   } catch (err) {
+    if (err instanceof AiLimitError && tier === "basic") {
+      return Response.json(
+        { error: `${err.message} Advanced includes more each day.`, upgradeTo: "advanced" },
+        { status: 429 }
+      );
+    }
     if (err instanceof BudgetError || err instanceof AiLimitError) {
       return Response.json({ error: err.message }, { status: 429 });
     }

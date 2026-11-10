@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { sql } from "../../../lib/db";
 import { BudgetError } from "../../../lib/rentcast";
 import { loadComps } from "../../../lib/comps";
+import { checkSearchAllowance, getUserPlan, PlanLimitError } from "../../../lib/plans";
 import { FETCH_RADII_MILES } from "../../results/geo";
 
 // GET /api/comps?lat=..&lng=..&radius=5&mode=rent|buy&address=..
@@ -32,6 +33,10 @@ export async function GET(request) {
   }
 
   try {
+    // Free accounts get a few distinct searches; repeats of one don't count.
+    const { plan } = await getUserPlan(userId);
+    await checkSearchAllowance(userId, plan, `${mode}|${lat.toFixed(3)},${lng.toFixed(3)}|${radius}`);
+
     const { estimate, listings } = await loadComps({
       lat,
       lng,
@@ -42,6 +47,9 @@ export async function GET(request) {
     });
     return Response.json({ mode, fetchRadius: radius, estimate, listings });
   } catch (err) {
+    if (err instanceof PlanLimitError) {
+      return Response.json({ error: err.message, upgradeTo: err.upgradeTo }, { status: 402 });
+    }
     if (err instanceof BudgetError) {
       return Response.json({ error: err.message }, { status: 429 });
     }

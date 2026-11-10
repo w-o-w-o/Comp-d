@@ -34,8 +34,11 @@ export function useRecommendation({ position, address, mode, radiusMiles }) {
         }),
       });
       const body = await res.json();
-      if (!res.ok) setState({ status: "error", message: body.error, forKey });
-      else setState({ status: "ready", data: body, forKey });
+      if (!res.ok) {
+        setState({ status: "error", message: body.error, upgradeTo: body.upgradeTo, forKey });
+      } else {
+        setState({ status: "ready", data: body, forKey });
+      }
     } catch {
       setState({ status: "error", message: "Couldn't reach the AI. Try again.", forKey });
     }
@@ -77,9 +80,13 @@ export default function AiRecommendation({ ai, listingsById, mode, onSelect, can
       {ai.status === "error" && !ai.stale && (
         <>
           <p className="panel-error">{ai.message}</p>
-          <button type="button" className="chip" onClick={ai.run}>
-            Try again
-          </button>
+          {ai.upgradeTo ? (
+            <UpgradeButton tier={ai.upgradeTo} />
+          ) : (
+            <button type="button" className="chip" onClick={ai.run}>
+              Try again
+            </button>
+          )}
         </>
       )}
 
@@ -87,6 +94,16 @@ export default function AiRecommendation({ ai, listingsById, mode, onSelect, can
         <AiResult result={ai.data} listingsById={listingsById} mode={mode} onSelect={onSelect} />
       )}
     </div>
+  );
+}
+
+// Plain <a>: checkout is a server redirect to Stripe, not a page.
+export function UpgradeButton({ tier }) {
+  const label = tier === "advanced" ? "Upgrade to Advanced — $20/mo" : "Upgrade to Basic — $10/mo";
+  return (
+    <a href={`/api/checkout?plan=${tier}`} className="btn upgrade-btn">
+      {label}
+    </a>
   );
 }
 

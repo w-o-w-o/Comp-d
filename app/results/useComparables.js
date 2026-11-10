@@ -27,7 +27,7 @@ export default function useComparables({ position, address, mode, radiusMiles })
         const res = await fetch(`/api/comps?${params}`);
         const body = await res.json();
         if (cancelled) return;
-        if (!res.ok) setState({ status: "error", message: body.error });
+        if (!res.ok) setState({ status: "error", message: body.error, upgradeTo: body.upgradeTo });
         else setState({ status: "ready", data: body });
       } catch {
         if (!cancelled) setState({ status: "error", message: "Couldn't load property data." });

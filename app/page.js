@@ -81,35 +81,40 @@ const plans = [
     price: "$0",
     period: "",
     blurb: "Try it on the place you're eyeing.",
-    features: ["3 comparisons per month", "Basic value verdict", "Price & space categories"],
+    features: [
+      "3 area searches every 30 days",
+      "Rent & value estimates",
+      "Nearby listings on the map, with photos",
+    ],
     cta: "Start free",
+    href: "/sign-up",
   },
   {
-    name: "Plus",
-    price: "$9",
+    name: "Basic",
+    price: "$10",
     period: "/month",
     blurb: "For renters and buyers actively searching.",
     features: [
-      "Unlimited comparisons",
-      "All 10 comparison categories",
-      "Custom priority weighting",
-      "Saved searches & alerts",
+      "Unlimited area searches",
+      "AI recommendations (3 per day)",
+      "Better-deal picks highlighted on the map",
     ],
-    cta: "Get Plus",
+    cta: "Get Basic",
+    href: "/api/checkout?plan=basic",
     featured: true,
   },
   {
-    name: "Pro",
-    price: "$29",
+    name: "Advanced",
+    price: "$20",
     period: "/month",
-    blurb: "For realtors and frequent investors.",
+    blurb: "For heavy searchers, investors, and realtors.",
     features: [
-      "Everything in Plus",
-      "Shareable client reports",
-      "Manage multiple client profiles",
-      "Priority support",
+      "Everything in Basic",
+      "AI recommendations (10 per day)",
+      "Built for comparing many homes and areas",
     ],
-    cta: "Go Pro",
+    cta: "Get Advanced",
+    href: "/api/checkout?plan=advanced",
   },
 ];
 
@@ -260,9 +265,10 @@ export default function Home() {
                       <li key={f}>{f}</li>
                     ))}
                   </ul>
-                  <Link href="/sign-up" className={`btn${p.featured ? "" : " btn-ghost"}`}>
+                  {/* Plain <a>: checkout is a server redirect to Stripe, not a page. */}
+                  <a href={p.href} className={`btn${p.featured ? "" : " btn-ghost"}`}>
                     {p.cta}
-                  </Link>
+                  </a>
                 </div>
               ))}
             </div>
