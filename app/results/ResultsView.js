@@ -35,12 +35,14 @@ const PRESETS_SORTED = [...RADIUS_PRESETS_MILES].sort((a, b) => a - b);
 //   "arriving" — the map zooms in from far away to the property's pin
 //   "radius"   — the user picks a search radius (presets or dragging) and rent/buy
 //   "results"  — estimate and nearby listings load, as price pins and photo cards
-export default function ResultsView({ address, placeId }) {
+// Searches reopened from history skip straight to "results" with their saved
+// radius and rent/buy choice. Every search that reaches "results" is saved.
+export default function ResultsView({ address, placeId, initialRadius, initialMode, fromHistory }) {
   const places = useMapsLibrary("places");
   const [lookup, setLookup] = useState({ status: "loading" });
-  const [stage, setStage] = useState("arriving");
-  const [radiusMiles, setRadiusMiles] = useState(DEFAULT_RADIUS_MILES);
-  const [mode, setMode] = useState("rent");
+  const [stage, setStage] = useState(fromHistory ? "results" : "arriving");
+  const [radiusMiles, setRadiusMiles] = useState(initialRadius ?? DEFAULT_RADIUS_MILES);
+  const [mode, setMode] = useState(initialMode ?? "rent");
   const [selectedId, setSelectedId] = useState(null);
   // Bumped whenever the camera should re-frame the circle (preset picked).
   const [frameRequest, setFrameRequest] = useState(0);
@@ -101,6 +103,32 @@ export default function ResultsView({ address, placeId }) {
   // globalThis.Map: the built-in Map, since `Map` here is the Google map component.
   const listingsById = new globalThis.Map(comps.nearby.map((l) => [l.id, l]));
 
+  // Save the search to history once its homes load, and again (after a pause)
+  // when the radius or rent/buy choice changes.
+  const nearbyCount = comps.nearby.length;
+  const estimateAmount = comps.status === "ready" ? comps.data.estimate?.amount ?? null : null;
+  useEffect(() => {
+    if (!ready || stage !== "results" || comps.status !== "ready") return;
+    const timer = setTimeout(() => {
+      fetch("/api/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address,
+          formattedAddress: lookup.formattedAddress,
+          placeId: placeId || null,
+          lat: lookup.position.lat,
+          lng: lookup.position.lng,
+          mode,
+          radiusMiles,
+          estimateAmount,
+          listingCount: nearbyCount,
+        }),
+      }).catch((err) => console.error("Couldn't save search:", err));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [ready, stage, comps.status, address, placeId, lookup, mode, radiusMiles, estimateAmount, nearbyCount]);
+
   function pickPreset(miles) {
     setRadiusMiles(miles);
     setFrameRequest((n) => n + 1);
@@ -131,7 +159,7 @@ export default function ResultsView({ address, placeId }) {
             mapId={MAP_ID}
             renderingType={RenderingType.VECTOR}
             defaultCenter={lookup.position}
-            defaultZoom={4}
+            defaultZoom={fromHistory ? 13 : 4}
             gestureHandling="greedy"
             colorScheme="FOLLOW_SYSTEM"
             streetViewControl={false}

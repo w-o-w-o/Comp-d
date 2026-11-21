@@ -1,15 +1,21 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import Nav from "../Nav";
 import SearchBar from "./SearchBar";
 import MapsProvider from "../maps/MapsProvider";
+import HistoryList from "../history/HistoryList";
+import { listSearches, toListEntries } from "../../lib/history";
 
 export const metadata = { title: "Search — Comp'd" };
+
+const RECENT_COUNT = 5;
 
 export default async function SearchPage() {
   // Sends logged-out visitors to the log-in page, then back here afterwards.
   const { userId } = await auth();
   if (!userId) redirect("/sign-in?redirect_url=/search");
+  const recent = toListEntries(await listSearches(userId, RECENT_COUNT));
 
   return (
     <>
@@ -23,6 +29,16 @@ export default async function SearchPage() {
         <MapsProvider>
           <SearchBar />
         </MapsProvider>
+
+        {recent.length > 0 && (
+          <section className="recent-searches" aria-labelledby="recent-title">
+            <div className="recent-head">
+              <h2 id="recent-title">Recent searches</h2>
+              <Link href="/history">See all</Link>
+            </div>
+            <HistoryList entries={recent} compact />
+          </section>
+        )}
       </main>
     </>
   );

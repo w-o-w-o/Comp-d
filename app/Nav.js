@@ -26,13 +26,19 @@ export default function Nav() {
             <Link href="/search" className="nav-login">
               Search
             </Link>
+            <Link href="/history" className="nav-login">
+              History
+            </Link>
             <Link href="/account" className="nav-login">
-              My account
+              <span className="nav-wide-only">My account</span>
+              <span className="nav-narrow-only">Account</span>
             </Link>
             <SignOutButton>
               <button className="btn btn-small btn-ghost">Log out</button>
             </SignOutButton>
-            <UserButton />
+            <span className="nav-wide-only">
+              <UserButton />
+            </span>
           </Show>
         </div>
       </div>

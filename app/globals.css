@@ -177,6 +177,119 @@ h3 {
   line-height: 1.15;
 }
 
+/* Search history */
+
+.recent-searches {
+  width: 100%;
+  max-width: 640px;
+  margin-top: 40px;
+  text-align: left;
+}
+
+.recent-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.recent-head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.recent-head a {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.history-page {
+  margin-top: 28px;
+  max-width: 760px;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.history-item {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.history-item:hover {
+  border-color: var(--accent);
+}
+
+.history-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.history-address {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.history-mode {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.history-mode-buy {
+  background: #fff4cc;
+  color: #5a4500;
+}
+
+.history-remove {
+  flex-shrink: 0;
+  width: 44px;
+  border: none;
+  border-left: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.history-remove:hover {
+  color: #d9534f;
+  background: var(--bg-alt);
+}
+
+.history-compact .history-open {
+  padding: 10px 14px;
+}
+
 .search-hint {
   margin: 10px 0 28px;
   max-width: 48ch;
@@ -1316,5 +1429,46 @@ h3 {
 
   .search-page .search-form {
     flex-direction: column;
+  }
+}
+
+.nav-narrow-only {
+  display: none;
+}
+
+.nav-wide-only {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Phones: shorter menu labels, no profile icon (settings stay on Account). */
+@media (max-width: 520px) {
+  .nav-wide-only {
+    display: none;
+  }
+
+  .nav-narrow-only {
+    display: inline;
+  }
+
+  .nav-inner {
+    gap: 12px;
+  }
+
+  .logo {
+    font-size: 1.1rem;
+  }
+
+  .nav-auth {
+    gap: 8px;
+  }
+
+  .nav-login {
+    font-size: 0.85rem;
+  }
+
+  .nav-auth .btn-small {
+    padding: 6px 10px;
+    font-size: 0.85rem;
   }
 }
