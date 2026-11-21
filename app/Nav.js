@@ -26,9 +26,6 @@ export default function Nav() {
             <Link href="/search" className="nav-login">
               Search
             </Link>
-            <Link href="/history" className="nav-login">
-              History
-            </Link>
             <Link href="/account" className="nav-login">
               <span className="nav-wide-only">My account</span>
               <span className="nav-narrow-only">Account</span>

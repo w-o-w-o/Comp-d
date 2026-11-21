@@ -13,7 +13,6 @@ import {
   useMap,
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
-import SearchBar from "../search/SearchBar";
 import HomePhoto from "./HomePhoto";
 import useComparables from "./useComparables";
 import AiRecommendation, { UpgradeButton, useRecommendation } from "./AiRecommendation";
@@ -238,7 +237,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
       {stage !== "results" && (
         <div className="flow-chip">
           <span className="flow-chip-address">{ready ? lookup.formattedAddress : address}</span>
-          <Link href="/search">New search</Link>
+          <Link href="/search">← Back to search</Link>
         </div>
       )}
 
@@ -275,7 +274,11 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
 
       {ready && stage === "results" && (
         <aside className="results-panel">
-          <SearchBar initialAddress={address} autoFocus={false} />
+          {/* Back instead of a search bar: re-searching the same address
+              would repeat lookups for no benefit. */}
+          <Link href="/search" className="back-link">
+            ← Back to search
+          </Link>
 
           <div className="panel-section">
             <p className="eyebrow">Comparing</p>

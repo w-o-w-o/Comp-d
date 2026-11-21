@@ -409,18 +409,21 @@ h3 {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
 }
 
-.results-panel .search-form {
-  flex-direction: row;
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
 }
 
-.results-panel .search-form input {
-  padding: 10px 16px;
-  font-size: 0.95rem;
-  box-shadow: none;
-}
-
-.results-panel .search-form .btn {
-  padding: 10px 16px;
+.back-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .panel-section {
