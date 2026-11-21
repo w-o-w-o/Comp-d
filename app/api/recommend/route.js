@@ -3,16 +3,35 @@ import { auth } from "@clerk/nextjs/server";
 import { sql } from "../../../lib/db";
 import { BudgetError } from "../../../lib/rentcast";
 import { loadComps } from "../../../lib/comps";
-import { AiLimitError, recommend } from "../../../lib/recommend";
+import { AiLimitError, MAX_LISTINGS, recommend } from "../../../lib/recommend";
+import { amenitySummary, areaProfile, floodZones } from "../../../lib/area";
 import { getUserPlan } from "../../../lib/plans";
 import { distanceMiles, fetchRadiusFor } from "../../results/geo";
 
-// The AI call can take a while.
-export const maxDuration = 60;
+// Area lookups plus the AI call can take a while.
+export const maxDuration = 90;
 
-// POST /api/recommend { lat, lng, radiusMiles, mode, address }
-// The server rebuilds the listing data itself (from the RentCast cache) rather
-// than trusting data sent by the browser.
+const TRAVEL_MODES = ["DRIVING", "TRANSIT", "BICYCLING", "WALKING"];
+
+// Commute times computed in the browser (Google Routes), checked for shape.
+function parseCommute(c) {
+  if (!c || typeof c !== "object" || !TRAVEL_MODES.includes(c.travelMode)) return null;
+  const minutes = (v) => (Number.isFinite(v) && v >= 0 && v < 1440 ? Math.round(v) : null);
+  const byListing = {};
+  for (const [id, v] of Object.entries(c.byListing || {}).slice(0, 100)) {
+    byListing[String(id).slice(0, 200)] = minutes(v);
+  }
+  return {
+    destination: String(c.destination || "").slice(0, 200),
+    travelMode: c.travelMode,
+    subjectMinutes: minutes(c.subjectMinutes),
+    byListing,
+  };
+}
+
+// POST /api/recommend { lat, lng, radiusMiles, mode, address, commute? }
+// The server rebuilds the listing and area data itself (from caches) rather
+// than trusting data sent by the browser; only commute times come from it.
 export async function POST(request) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "Please log in." }, { status: 401 });
@@ -71,11 +90,29 @@ export async function POST(request) {
       return Response.json({ error: "There are no listings in this radius to compare." }, { status: 422 });
     }
 
+    // Public area data, plus walkability and flood zone for each listing the AI sees.
+    const considered = nearby.slice(0, MAX_LISTINGS);
+    const { pois, ...area } = await areaProfile({
+      lat,
+      lng,
+      address,
+      radiusMiles,
+      listingZips: considered.map((l) => l.zip),
+    });
+    const floods = await floodZones(considered);
+    const enriched = considered.map((l, i) => ({
+      ...l,
+      amenities: amenitySummary(pois, l),
+      floodRisk: floods[i]?.risk ?? null,
+    }));
+
     const result = await recommend({
       mode,
       subjectAddress: address,
       estimate,
-      listings: nearby,
+      listings: enriched,
+      area,
+      commute: parseCommute(body.commute),
       radiusMiles,
       userId,
       dailyLimit: plan.aiPerDay,

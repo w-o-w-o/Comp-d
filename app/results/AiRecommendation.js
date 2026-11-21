@@ -11,11 +11,14 @@ const RATING_LABELS = {
 };
 
 // Runs the AI analysis on request and remembers which search it was for, so a
-// radius or rent/buy change shows the result is out of date.
-export function useRecommendation({ position, address, mode, radiusMiles }) {
+// radius, rent/buy, or commute change shows the result is out of date.
+// `commute` is the latest commute calculation (or null), sent along so the AI
+// can weigh travel times.
+export function useRecommendation({ position, address, mode, radiusMiles, commute }) {
   const [state, setState] = useState({ status: "idle" });
+  const commuteKey = commute ? `${commute.destination}|${commute.travelMode}` : "";
   const searchKey = position
-    ? `${mode}|${radiusMiles.toFixed(2)}|${position.lat},${position.lng}`
+    ? `${mode}|${radiusMiles.toFixed(2)}|${position.lat},${position.lng}|${commuteKey}`
     : null;
 
   async function run() {
@@ -31,6 +34,7 @@ export function useRecommendation({ position, address, mode, radiusMiles }) {
           radiusMiles,
           mode,
           address,
+          commute,
         }),
       });
       const body = await res.json();
@@ -62,7 +66,7 @@ export default function AiRecommendation({ ai, listingsById, mode, onSelect, can
         <>
           <p className="panel-muted">
             {ai.stale
-              ? "Your radius or rent/buy choice changed since the last analysis."
+              ? "Your radius, rent/buy choice, or commute changed since the last analysis."
               : "Have AI judge this property against the homes in your radius and suggest better deals."}
           </p>
           <button type="button" className="btn ai-run" onClick={ai.run} disabled={!canRun}>
@@ -108,7 +112,7 @@ export function UpgradeButton({ tier }) {
 }
 
 function AiResult({ result, listingsById, mode, onSelect }) {
-  const { verdict, recommendations, caveats } = result;
+  const { verdict, marketContext, recommendations, caveats } = result;
 
   return (
     <div className="ai-result">
@@ -123,6 +127,8 @@ function AiResult({ result, listingsById, mode, onSelect }) {
           </ul>
         )}
       </div>
+
+      {marketContext && <p className="ai-market">{marketContext}</p>}
 
       <h3 className="ai-picks-title">
         {recommendations.length > 0

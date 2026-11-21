@@ -16,6 +16,8 @@ import {
 import HomePhoto from "./HomePhoto";
 import useComparables from "./useComparables";
 import AiRecommendation, { UpgradeButton, useRecommendation } from "./AiRecommendation";
+import AreaInsights, { useArea } from "./AreaInsights";
+import CommuteBox, { formatCommute, useCommute } from "./Commute";
 import { animateCamera, cameraForCircle } from "./camera";
 import { formatFacts, formatMiles, formatPrice, formatShortPrice } from "./format";
 import {
@@ -93,11 +95,31 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
     radiusMiles,
   });
   const selected = comps.nearby.find((l) => l.id === selectedId) || null;
+  const resultsPosition = ready && stage === "results" ? lookup.position : null;
+  const commute = useCommute({ subject: resultsPosition, listings: comps.nearby });
+  const commuteForAi =
+    commute.status === "ready"
+      ? {
+          destination: commute.destination,
+          travelMode: commute.travelMode,
+          subjectMinutes: commute.subjectMinutes,
+          byListing: commute.byListing,
+        }
+      : null;
   const ai = useRecommendation({
-    position: ready && stage === "results" ? lookup.position : null,
+    position: resultsPosition,
     address: ready ? lookup.formattedAddress : null,
     mode,
     radiusMiles,
+    commute: commuteForAi,
+  });
+  const area = useArea({
+    // Wait for the listings, so their ZIP code fallback is known and the
+    // area is looked up once.
+    position: comps.status === "ready" ? resultsPosition : null,
+    address: ready ? lookup.formattedAddress : null,
+    radiusMiles,
+    fallbackZip: mostCommonZip(comps.nearby),
   });
   // globalThis.Map: the built-in Map, since `Map` here is the Google map component.
   const listingsById = new globalThis.Map(comps.nearby.map((l) => [l.id, l]));
@@ -214,7 +236,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
                 headerDisabled
                 onCloseClick={() => setSelectedId(null)}
               >
-                <ListingCard listing={selected} mode={mode} compact />
+                <ListingCard listing={selected} mode={mode} commute={commute} compact />
               </InfoWindow>
             )}
 
@@ -287,6 +309,14 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             <Estimate comps={comps} mode={mode} />
           </div>
 
+          <AreaInsights
+            area={area}
+            mode={mode}
+            subjectBeds={comps.status === "ready" ? comps.data.estimate?.subject?.beds : null}
+          />
+
+          <CommuteBox commute={commute} />
+
           <AiRecommendation
             ai={ai}
             listingsById={listingsById}
@@ -303,6 +333,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             radiusMiles={radiusMiles}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            commute={commute}
           />
         </aside>
       )}
@@ -392,7 +423,7 @@ function Estimate({ comps, mode }) {
   );
 }
 
-function Listings({ comps, mode, radiusMiles, selectedId, onSelect }) {
+function Listings({ comps, mode, radiusMiles, selectedId, onSelect, commute }) {
   if (comps.status !== "ready") return null;
   const label = mode === "rent" ? "for rent" : "for sale";
 
@@ -413,7 +444,7 @@ function Listings({ comps, mode, radiusMiles, selectedId, onSelect }) {
                 className={l.id === selectedId ? "listing listing-selected" : "listing"}
                 onClick={() => onSelect(l.id)}
               >
-                <ListingCard listing={l} mode={mode} />
+                <ListingCard listing={l} mode={mode} commute={commute} />
               </button>
             </li>
           ))}
@@ -424,8 +455,18 @@ function Listings({ comps, mode, radiusMiles, selectedId, onSelect }) {
   );
 }
 
+function mostCommonZip(listings) {
+  const counts = {};
+  for (const l of listings) if (l.zip) counts[l.zip] = (counts[l.zip] || 0) + 1;
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+}
+
 // Photo card used in the panel list and in the map popup.
-function ListingCard({ listing: l, mode, compact = false }) {
+function ListingCard({ listing: l, mode, commute, compact = false }) {
+  const commuteText =
+    commute?.status === "ready"
+      ? formatCommute(commute.byListing[l.id], commute.travelMode)
+      : null;
   const details = [
     l.type,
     l.yearBuilt && `Built ${l.yearBuilt}`,
@@ -441,6 +482,7 @@ function ListingCard({ listing: l, mode, compact = false }) {
           {[formatFacts(l), `${formatMiles(l.distance)} away`].filter(Boolean).join(" · ")}
         </span>
         <span className="listing-address">{l.address}</span>
+        {commuteText && <span className="listing-commute">{commuteText}</span>}
         {compact && details.length > 0 && (
           <span className="listing-facts">{details.join(" · ")}</span>
         )}
