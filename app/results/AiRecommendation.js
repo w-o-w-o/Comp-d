@@ -15,11 +15,13 @@ const RATING_LABELS = {
 // `commute` is the latest commute calculation (or null), sent along so the AI
 // can weigh travel times. `nearby` is the Google Places counts around the
 // property (or null), which the server can't look up itself.
-export function useRecommendation({ position, address, mode, radiusMiles, commute, nearby }) {
+// `filters` limits the AI to the same bedroom counts and home types the user sees.
+export function useRecommendation({ position, address, mode, radiusMiles, commute, nearby, filters }) {
   const [state, setState] = useState({ status: "idle" });
   const commuteKey = commute ? `${commute.destination}|${commute.travelMode}` : "";
+  const filterKey = filters ? `${filters.beds.join(",")}/${filters.types.join(",")}` : "";
   const searchKey = position
-    ? `${mode}|${radiusMiles.toFixed(2)}|${position.lat},${position.lng}|${commuteKey}`
+    ? `${mode}|${radiusMiles.toFixed(2)}|${position.lat},${position.lng}|${commuteKey}|${filterKey}`
     : null;
 
   async function run() {
@@ -37,6 +39,7 @@ export function useRecommendation({ position, address, mode, radiusMiles, commut
           address,
           commute,
           nearby,
+          filters,
         }),
       });
       const body = await res.json();
@@ -68,7 +71,7 @@ export default function AiRecommendation({ ai, listingsById, mode, onSelect, can
         <>
           <p className="panel-muted">
             {ai.stale
-              ? "Your radius, rent/buy choice, or commute changed since the last analysis."
+              ? "Your radius, rent/buy choice, filters, or commute changed since the last analysis."
               : "Have AI judge this property against the homes in your radius and suggest better deals."}
           </p>
           <button type="button" className="btn ai-run" onClick={ai.run} disabled={!canRun}>

@@ -910,6 +910,79 @@ h3 {
   color: #1f7a5a;
 }
 
+/* Warnings and extra facts on listing cards */
+.listing-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.listing-note {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.listing-note-warn {
+  border-color: rgba(217, 83, 79, 0.5);
+  background: rgba(217, 83, 79, 0.1);
+  color: #d9534f;
+}
+
+.listing-note-good {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.home-card-compact .listing-note {
+  border-color: #dedcd4;
+  color: #5b625e;
+}
+
+.home-card-compact .listing-note-warn {
+  border-color: rgba(217, 83, 79, 0.5);
+  color: #c9302c;
+}
+
+.home-card-compact .listing-note-good {
+  border-color: #1f7a5a;
+  color: #1f7a5a;
+}
+
+/* "Similar homes" filters above the listing list */
+.listing-freshness {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+}
+
+.listing-filters {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-label {
+  width: 40px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.filter-row .chip {
+  padding: 4px 10px;
+  font-size: 0.82rem;
+}
+
 .ai-market {
   margin: 12px 0 0;
   font-size: 0.9rem;

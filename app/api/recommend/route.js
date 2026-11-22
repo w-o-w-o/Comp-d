@@ -7,6 +7,7 @@ import { AiLimitError, MAX_LISTINGS, recommend } from "../../../lib/recommend";
 import { areaProfile, floodZones } from "../../../lib/area";
 import { getUserPlan } from "../../../lib/plans";
 import { distanceMiles, fetchRadiusFor } from "../../results/geo";
+import { matchesFilters, parseFilters } from "../../results/quality";
 
 // Area lookups plus the AI call can take a while.
 export const maxDuration = 90;
@@ -100,14 +101,20 @@ export async function POST(request) {
       userId,
     });
 
+    // Same homes the user sees: inside the radius and matching their filters.
+    const filters = parseFilters(body.filters);
     const position = { lat, lng };
     const nearby = listings
+      .filter((l) => matchesFilters(l, filters))
       .map((l) => ({ ...l, distance: distanceMiles(position, l) }))
       .filter((l) => l.distance <= radiusMiles)
       .sort((a, b) => a.distance - b.distance);
 
     if (nearby.length === 0) {
-      return Response.json({ error: "There are no listings in this radius to compare." }, { status: 422 });
+      return Response.json(
+        { error: "There are no listings in this radius that match your filters." },
+        { status: 422 }
+      );
     }
 
     // Public area data, plus the flood zone of each listing the AI sees.
@@ -126,6 +133,7 @@ export async function POST(request) {
       listings: enriched,
       area,
       commute: parseCommute(body.commute),
+      filters,
       radiusMiles,
       userId,
       dailyLimit: plan.aiPerDay,

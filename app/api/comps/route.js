@@ -37,7 +37,7 @@ export async function GET(request) {
     const { plan } = await getUserPlan(userId);
     await checkSearchAllowance(userId, plan, `${mode}|${lat.toFixed(3)},${lng.toFixed(3)}|${radius}`);
 
-    const { estimate, listings } = await loadComps({
+    const { estimate, listings, listingsFetchedAt } = await loadComps({
       lat,
       lng,
       fetchRadius: radius,
@@ -45,7 +45,7 @@ export async function GET(request) {
       address,
       userId,
     });
-    return Response.json({ mode, fetchRadius: radius, estimate, listings });
+    return Response.json({ mode, fetchRadius: radius, estimate, listings, listingsFetchedAt });
   } catch (err) {
     if (err instanceof PlanLimitError) {
       return Response.json({ error: err.message, upgradeTo: err.upgradeTo }, { status: 402 });

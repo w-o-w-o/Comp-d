@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AdvancedMarker,
@@ -20,6 +20,7 @@ import AreaInsights, { useArea } from "./AreaInsights";
 import CommuteBox, { formatCommute, useCommute } from "./Commute";
 import { useNearbyPlaces } from "./NearbyPlaces";
 import { animateCamera, cameraForCircle } from "./camera";
+import { BED_OPTIONS, defaultFilters, matchesFilters, TYPE_GROUPS, typeGroup } from "./quality";
 import { formatFacts, formatMiles, formatPrice, formatShortPrice } from "./format";
 import {
   DEFAULT_RADIUS_MILES,
@@ -95,9 +96,22 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
     mode,
     radiusMiles,
   });
+  // "Similar homes" filters: defaults come from the subject home until the
+  // user picks their own.
+  const [chosenFilters, setFilters] = useState(null);
+  const subjectFacts = comps.status === "ready" ? comps.data.estimate?.subject : null;
+  const filters = useMemo(
+    () => chosenFilters ?? (comps.status === "ready" ? defaultFilters(subjectFacts) : null),
+    [chosenFilters, comps.status, subjectFacts]
+  );
+  const shown = useMemo(
+    () => comps.nearby.filter((l) => matchesFilters(l, filters)),
+    [comps.nearby, filters]
+  );
+
   const selected = comps.nearby.find((l) => l.id === selectedId) || null;
   const resultsPosition = ready && stage === "results" ? lookup.position : null;
-  const commute = useCommute({ subject: resultsPosition, listings: comps.nearby });
+  const commute = useCommute({ subject: resultsPosition, listings: shown });
   const commuteForAi =
     commute.status === "ready"
       ? {
@@ -115,6 +129,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
     radiusMiles,
     commute: commuteForAi,
     nearby: nearby.status === "ready" ? nearby.data : null,
+    filters,
   });
   const area = useArea({
     // Wait for the listings, so their ZIP code fallback is known and the
@@ -209,7 +224,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             )}
 
             {stage === "results" &&
-              comps.nearby.map((l) => (
+              shown.map((l) => (
                 <AdvancedMarker
                   key={l.id}
                   position={l}
@@ -333,6 +348,9 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
 
           <Listings
             comps={comps}
+            shown={shown}
+            filters={filters}
+            onFilters={setFilters}
             mode={mode}
             radiusMiles={radiusMiles}
             selectedId={selectedId}
@@ -427,21 +445,35 @@ function Estimate({ comps, mode }) {
   );
 }
 
-function Listings({ comps, mode, radiusMiles, selectedId, onSelect, commute }) {
+function Listings({ comps, shown, filters, onFilters, mode, radiusMiles, selectedId, onSelect, commute }) {
   if (comps.status !== "ready") return null;
   const label = mode === "rent" ? "for rent" : "for sale";
+  const total = comps.nearby.length;
+  const filtered = shown.length !== total;
 
   return (
     <div className="panel-section">
       <h2>
-        {comps.nearby.length} {comps.nearby.length === 1 ? "home" : "homes"} {label} within{" "}
-        {formatMiles(radiusMiles)}
+        {filtered ? `${shown.length} of ${total}` : total} {total === 1 ? "home" : "homes"} {label}{" "}
+        within {formatMiles(radiusMiles)}
       </h2>
-      {comps.nearby.length === 0 ? (
+      <p className="panel-muted listing-freshness">
+        Listing data from {formatDataDate(comps.data.listingsFetchedAt)}. Some homes may already be taken.
+      </p>
+      {total > 0 && (
+        <ListingFilters
+          filters={filters}
+          onChange={onFilters}
+          showLand={comps.nearby.some((l) => typeGroup(l.type) === "land") || filters.types.includes("land")}
+        />
+      )}
+      {total === 0 ? (
         <p className="panel-muted">Try a larger radius to see more listings.</p>
+      ) : shown.length === 0 ? (
+        <p className="panel-muted">No homes match these filters. Try more bedroom counts or home types.</p>
       ) : (
         <ul className="listing-list">
-          {comps.nearby.map((l) => (
+          {shown.map((l) => (
             <li key={l.id}>
               <button
                 type="button"
@@ -459,6 +491,60 @@ function Listings({ comps, mode, radiusMiles, selectedId, onSelect, commute }) {
   );
 }
 
+// Bedroom and home-type chips. Several can be on at once; none means "any".
+function ListingFilters({ filters, onChange, showLand }) {
+  const toggle = (key, value) => {
+    const list = filters[key];
+    onChange({
+      ...filters,
+      [key]: list.includes(value) ? list.filter((v) => v !== value) : [...list, value].sort(),
+    });
+  };
+  const chip = (active, label, onClick) => (
+    <button
+      key={label}
+      type="button"
+      className={active ? "chip chip-active" : "chip"}
+      aria-pressed={active}
+      onClick={onClick}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="listing-filters">
+      <div className="filter-row" role="group" aria-label="Bedrooms">
+        <span className="filter-label">Beds</span>
+        {chip(filters.beds.length === 0, "Any", () => onChange({ ...filters, beds: [] }))}
+        {BED_OPTIONS.map((b) =>
+          chip(filters.beds.includes(b), b === 0 ? "Studio" : b === 4 ? "4+" : String(b), () =>
+            toggle("beds", b)
+          )
+        )}
+      </div>
+      <div className="filter-row" role="group" aria-label="Home type">
+        <span className="filter-label">Type</span>
+        {chip(filters.types.length === 0, "Any", () => onChange({ ...filters, types: [] }))}
+        {Object.entries(TYPE_GROUPS)
+          .filter(([group]) => group !== "land" || showLand)
+          .map(([group, { label }]) => chip(filters.types.includes(group), label, () => toggle("types", group)))}
+      </div>
+    </div>
+  );
+}
+
+function formatDataDate(iso) {
+  if (!iso) return "recently";
+  const days = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000);
+  const date = new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return days <= 0 ? `today (${date})` : `${date} (${days} ${days === 1 ? "day" : "days"} ago)`;
+}
+
+function formatMonth(isoDate) {
+  return new Date(`${isoDate}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
 function mostCommonZip(listings) {
   const counts = {};
   for (const l of listings) if (l.zip) counts[l.zip] = (counts[l.zip] || 0) + 1;
@@ -474,8 +560,21 @@ function ListingCard({ listing: l, mode, commute, compact = false }) {
   const details = [
     l.type,
     l.yearBuilt && `Built ${l.yearBuilt}`,
-    l.daysOnMarket != null && `${l.daysOnMarket} days listed`,
+    l.daysListed != null && `${l.daysListed} ${l.daysListed === 1 ? "day" : "days"} listed`,
   ].filter(Boolean);
+
+  // Warnings and extra facts, shown on every card.
+  const notes = [];
+  if (l.possiblyPerRoom) {
+    notes.push({ warn: true, text: "Price may be per room", title: "Cheaper than a typical studio or 1-bedroom nearby, so this is likely the price of one room, not the whole home." });
+  }
+  if (l.priceCut) {
+    notes.push({ good: true, text: `Reduced ${formatPrice(l.priceCut, mode)}`, title: `Listed at ${formatPrice(l.previousPrice, mode)} in ${formatMonth(l.previousListedDate)}` });
+  } else if (l.previousPrice && l.previousPrice !== l.price) {
+    notes.push({ text: `Was ${formatPrice(l.previousPrice, mode)} in ${formatMonth(l.previousListedDate)}`, title: "Price the last time this home was listed" });
+  }
+  if (l.hoaFee) notes.push({ text: `HOA ${formatPrice(l.hoaFee, "rent")}` });
+  if (!l.sqft && typeGroup(l.type) !== "land") notes.push({ text: "Size not listed" });
 
   return (
     <div className={compact ? "home-card home-card-compact" : "home-card"}>
@@ -486,6 +585,19 @@ function ListingCard({ listing: l, mode, commute, compact = false }) {
           {[formatFacts(l), `${formatMiles(l.distance)} away`].filter(Boolean).join(" · ")}
         </span>
         <span className="listing-address">{l.address}</span>
+        {notes.length > 0 && (
+          <span className="listing-notes">
+            {notes.map((n) => (
+              <span
+                key={n.text}
+                title={n.title}
+                className={n.warn ? "listing-note listing-note-warn" : n.good ? "listing-note listing-note-good" : "listing-note"}
+              >
+                {n.text}
+              </span>
+            ))}
+          </span>
+        )}
         {commuteText && <span className="listing-commute">{commuteText}</span>}
         {compact && details.length > 0 && (
           <span className="listing-facts">{details.join(" · ")}</span>
