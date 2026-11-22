@@ -13,8 +13,9 @@ const RATING_LABELS = {
 // Runs the AI analysis on request and remembers which search it was for, so a
 // radius, rent/buy, or commute change shows the result is out of date.
 // `commute` is the latest commute calculation (or null), sent along so the AI
-// can weigh travel times.
-export function useRecommendation({ position, address, mode, radiusMiles, commute }) {
+// can weigh travel times. `nearby` is the Google Places counts around the
+// property (or null), which the server can't look up itself.
+export function useRecommendation({ position, address, mode, radiusMiles, commute, nearby }) {
   const [state, setState] = useState({ status: "idle" });
   const commuteKey = commute ? `${commute.destination}|${commute.travelMode}` : "";
   const searchKey = position
@@ -35,6 +36,7 @@ export function useRecommendation({ position, address, mode, radiusMiles, commut
           mode,
           address,
           commute,
+          nearby,
         }),
       });
       const body = await res.json();

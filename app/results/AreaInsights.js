@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { formatPrice } from "./format";
+import { formatCount } from "./NearbyPlaces";
 
 const BEDROOM_LABELS = ["Studio", "1 bd", "2 bd", "3 bd", "4 bd"];
 
 // Loads public data about the searched property's area from /api/area.
 export function useArea({ position, address, radiusMiles, fallbackZip }) {
   const [state, setState] = useState({ status: "idle" });
-  // Amenity counts depend on the radius only loosely, so refetch per half mile.
+  // Area facts barely depend on the radius, so only refetch per half mile.
   const radiusBucket = Math.ceil(radiusMiles * 2) / 2;
 
   useEffect(() => {
@@ -24,28 +25,11 @@ export function useArea({ position, address, radiusMiles, fallbackZip }) {
       });
       if (fallbackZip) params.set("fallbackZip", fallbackZip);
 
-      // Nearby places load separately (slower); they fill in when they arrive.
-      const amenities = fetch(`/api/area?${params}&part=amenities`)
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null);
-
       try {
         const res = await fetch(`/api/area?${params}`);
         const body = await res.json();
         if (cancelled) return;
-        if (!res.ok) {
-          setState({ status: "error", message: body.error });
-          return;
-        }
-        setState({ status: "ready", data: body, amenitiesLoading: true });
-        const extra = await amenities;
-        if (!cancelled) {
-          setState({
-            status: "ready",
-            data: { ...body, amenities: extra?.amenities ?? null },
-            amenitiesLoading: false,
-          });
-        }
+        setState(res.ok ? { status: "ready", data: body } : { status: "error", message: body.error });
       } catch {
         if (!cancelled) setState({ status: "error", message: "Couldn't load area data." });
       }
@@ -64,7 +48,8 @@ function percent(n) {
   return `${n > 0 ? "+" : ""}${n}%`;
 }
 
-export default function AreaInsights({ area, mode, subjectBeds }) {
+// `nearby` is the Google Places lookup from useNearbyPlaces.
+export default function AreaInsights({ area, nearby, mode, subjectBeds }) {
   if (area.status === "idle") return null;
 
   return (
@@ -73,19 +58,15 @@ export default function AreaInsights({ area, mode, subjectBeds }) {
       {area.status === "loading" && <p className="panel-muted ai-loading">Loading public data…</p>}
       {area.status === "error" && <p className="panel-error">{area.message}</p>}
       {area.status === "ready" && (
-        <AreaFacts
-          data={area.data}
-          mode={mode}
-          subjectBeds={subjectBeds}
-          amenitiesLoading={area.amenitiesLoading}
-        />
+        <AreaFacts data={area.data} nearby={nearby} mode={mode} subjectBeds={subjectBeds} />
       )}
     </div>
   );
 }
 
-function AreaFacts({ data, mode, subjectBeds, amenitiesLoading }) {
-  const { fairMarketRent: fmr, neighborhood, trends, flood, amenities } = data;
+function AreaFacts({ data, nearby, mode, subjectBeds }) {
+  const { fairMarketRent: fmr, neighborhood, trends, flood } = data;
+  const amenities = nearby.status === "ready" ? nearby.data : null;
   const rows = [];
 
   if (mode === "rent" && fmr) {
@@ -130,7 +111,7 @@ function AreaFacts({ data, mode, subjectBeds, amenitiesLoading }) {
   }
 
   if (amenities) {
-    const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    const count = (n, one, many) => `${formatCount(n)} ${n === 1 ? one : many}`;
     const bits = [
       count(amenities.groceriesWithinHalfMile, "grocery store", "grocery stores"),
       count(amenities.parksWithinHalfMile, "park", "parks"),
@@ -139,17 +120,15 @@ function AreaFacts({ data, mode, subjectBeds, amenitiesLoading }) {
     rows.push({ label: "Within ½ mile", value: bits.join(" · ") });
     rows.push({
       label: "Transit stops within ¼ mile",
-      value: String(amenities.transitStopsWithinQuarterMile),
+      value: formatCount(amenities.transitStopsWithinQuarterMile),
       note:
         amenities.nearestGroceryMiles != null
           ? `Nearest grocery: ${amenities.nearestGroceryMiles} mi`
-          : null,
+          : "No grocery store within 2 mi",
     });
-  }
-
-  if (amenitiesLoading) {
+  } else if (nearby.status === "loading" || nearby.status === "idle") {
     rows.push({ label: "Nearby places", value: "Loading…" });
-  } else if (!amenities) {
+  } else {
     rows.push({ label: "Nearby places", value: "Not available right now" });
   }
 
@@ -171,7 +150,7 @@ function AreaFacts({ data, mode, subjectBeds, amenitiesLoading }) {
         ))}
       </dl>
       <p className="panel-credit">
-        Sources: HUD, U.S. Census Bureau, Zillow Research, FEMA, OpenStreetMap contributors.
+        Sources: HUD, U.S. Census Bureau, Zillow Research, FEMA, Google.
       </p>
     </>
   );

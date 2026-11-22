@@ -4,7 +4,7 @@ import { sql } from "../../../lib/db";
 import { BudgetError } from "../../../lib/rentcast";
 import { loadComps } from "../../../lib/comps";
 import { AiLimitError, MAX_LISTINGS, recommend } from "../../../lib/recommend";
-import { amenitySummary, areaProfile, floodZones } from "../../../lib/area";
+import { areaProfile, floodZones } from "../../../lib/area";
 import { getUserPlan } from "../../../lib/plans";
 import { distanceMiles, fetchRadiusFor } from "../../results/geo";
 
@@ -29,9 +29,29 @@ function parseCommute(c) {
   };
 }
 
-// POST /api/recommend { lat, lng, radiusMiles, mode, address, commute? }
+// Nearby-place counts looked up in the browser (Google Places), checked for shape.
+const NEARBY_COUNTS = [
+  "groceriesWithinHalfMile",
+  "parksWithinHalfMile",
+  "restaurantsAndCafesWithinHalfMile",
+  "transitStopsWithinQuarterMile",
+];
+function parseNearby(n) {
+  if (!n || typeof n !== "object") return null;
+  const out = {};
+  for (const k of NEARBY_COUNTS) {
+    if (!Number.isInteger(n[k]) || n[k] < 0 || n[k] > 20) return null;
+    out[k] = n[k];
+  }
+  const g = n.nearestGroceryMiles;
+  out.nearestGroceryMiles = Number.isFinite(g) && g >= 0 && g <= 5 ? Math.round(g * 100) / 100 : null;
+  return out;
+}
+
+// POST /api/recommend { lat, lng, radiusMiles, mode, address, commute?, nearby? }
 // The server rebuilds the listing and area data itself (from caches) rather
-// than trusting data sent by the browser; only commute times come from it.
+// than trusting data sent by the browser; only commute times and nearby-place
+// counts come from it (both need the browser's Google key).
 export async function POST(request) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "Please log in." }, { status: 401 });
@@ -90,21 +110,14 @@ export async function POST(request) {
       return Response.json({ error: "There are no listings in this radius to compare." }, { status: 422 });
     }
 
-    // Public area data, plus walkability and flood zone for each listing the AI sees.
+    // Public area data, plus the flood zone of each listing the AI sees.
     const considered = nearby.slice(0, MAX_LISTINGS);
-    const { pois, ...area } = await areaProfile({
-      lat,
-      lng,
-      address,
-      radiusMiles,
-      listingZips: considered.map((l) => l.zip),
-    });
-    const floods = await floodZones(considered);
-    const enriched = considered.map((l, i) => ({
-      ...l,
-      amenities: amenitySummary(pois, l),
-      floodRisk: floods[i]?.risk ?? null,
-    }));
+    const [profile, floods] = await Promise.all([
+      areaProfile({ lat, lng, address, listingZips: considered.map((l) => l.zip) }),
+      floodZones(considered),
+    ]);
+    const area = { ...profile, amenities: parseNearby(body.nearby) };
+    const enriched = considered.map((l, i) => ({ ...l, floodRisk: floods[i]?.risk ?? null }));
 
     const result = await recommend({
       mode,

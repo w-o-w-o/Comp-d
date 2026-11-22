@@ -18,6 +18,7 @@ import useComparables from "./useComparables";
 import AiRecommendation, { UpgradeButton, useRecommendation } from "./AiRecommendation";
 import AreaInsights, { useArea } from "./AreaInsights";
 import CommuteBox, { formatCommute, useCommute } from "./Commute";
+import { useNearbyPlaces } from "./NearbyPlaces";
 import { animateCamera, cameraForCircle } from "./camera";
 import { formatFacts, formatMiles, formatPrice, formatShortPrice } from "./format";
 import {
@@ -106,12 +107,14 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
           byListing: commute.byListing,
         }
       : null;
+  const nearby = useNearbyPlaces(resultsPosition);
   const ai = useRecommendation({
     position: resultsPosition,
     address: ready ? lookup.formattedAddress : null,
     mode,
     radiusMiles,
     commute: commuteForAi,
+    nearby: nearby.status === "ready" ? nearby.data : null,
   });
   const area = useArea({
     // Wait for the listings, so their ZIP code fallback is known and the
@@ -311,6 +314,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
 
           <AreaInsights
             area={area}
+            nearby={nearby}
             mode={mode}
             subjectBeds={comps.status === "ready" ? comps.data.estimate?.subject?.beds : null}
           />
