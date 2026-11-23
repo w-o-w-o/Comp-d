@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatFacts, formatMiles, formatPrice } from "./format";
+import AiPreferences from "./AiPreferences";
 
 const RATING_LABELS = {
   "good deal": "Good deal",
@@ -16,12 +17,13 @@ const RATING_LABELS = {
 // can weigh travel times. `nearby` is the Google Places counts around the
 // property (or null), which the server can't look up itself.
 // `filters` limits the AI to the same bedroom counts and home types the user sees.
-export function useRecommendation({ position, address, mode, radiusMiles, commute, nearby, filters }) {
+// `priorities` is what the user told the AI to weigh (or null).
+export function useRecommendation({ position, address, mode, radiusMiles, commute, nearby, filters, priorities }) {
   const [state, setState] = useState({ status: "idle" });
   const commuteKey = commute ? `${commute.destination}|${commute.travelMode}` : "";
   const filterKey = filters ? `${filters.beds.join(",")}/${filters.types.join(",")}` : "";
   const searchKey = position
-    ? `${mode}|${radiusMiles.toFixed(2)}|${position.lat},${position.lng}|${commuteKey}|${filterKey}`
+    ? `${mode}|${radiusMiles.toFixed(2)}|${position.lat},${position.lng}|${commuteKey}|${filterKey}|${JSON.stringify(priorities)}`
     : null;
 
   async function run() {
@@ -40,6 +42,7 @@ export function useRecommendation({ position, address, mode, radiusMiles, commut
           commute,
           nearby,
           filters,
+          priorities,
         }),
       });
       const body = await res.json();
@@ -59,7 +62,15 @@ export function useRecommendation({ position, address, mode, radiusMiles, commut
   return { ...state, stale, picks, run };
 }
 
-export default function AiRecommendation({ ai, listingsById, mode, onSelect, canRun }) {
+export default function AiRecommendation({ ai, listingsById, mode, onSelect, canRun, priorities, prefsCtx }) {
+  const hasResult = ai.status !== "idle";
+  // Once there's a result, the priorities fold away behind a button.
+  const [prefsOpen, setPrefsOpen] = useState(false);
+  const showPrefs = !hasResult || prefsOpen;
+  const selectedCount = priorities.payload
+    ? priorities.payload.items.length + priorities.payload.custom.length
+    : 0;
+
   return (
     <div className="panel-section ai-section">
       <div className="ai-head">
@@ -67,14 +78,37 @@ export default function AiRecommendation({ ai, listingsById, mode, onSelect, can
         <span className="ai-badge">Claude</span>
       </div>
 
+      {!hasResult && (
+        <p className="panel-muted">
+          Have AI judge this property against the homes in your radius and suggest better deals.
+          Pick what matters to you, or skip this and analyze.
+        </p>
+      )}
+
+      {showPrefs ? (
+        <AiPreferences priorities={priorities} mode={mode} ctx={prefsCtx} />
+      ) : (
+        <button type="button" className="chip ai-prefs-toggle" onClick={() => setPrefsOpen(true)}>
+          Change priorities{selectedCount ? ` (${selectedCount})` : ""}
+        </button>
+      )}
+
       {(ai.status === "idle" || ai.stale) && (
         <>
-          <p className="panel-muted">
-            {ai.stale
-              ? "Your radius, rent/buy choice, filters, or commute changed since the last analysis."
-              : "Have AI judge this property against the homes in your radius and suggest better deals."}
-          </p>
-          <button type="button" className="btn ai-run" onClick={ai.run} disabled={!canRun}>
+          {ai.stale && (
+            <p className="panel-muted">
+              Your priorities, radius, rent/buy choice, filters, or commute changed since the last analysis.
+            </p>
+          )}
+          <button
+            type="button"
+            className="btn ai-run"
+            onClick={() => {
+              setPrefsOpen(false);
+              ai.run();
+            }}
+            disabled={!canRun}
+          >
             {ai.stale ? "Re-analyze" : "Analyze with AI"}
           </button>
         </>
@@ -117,7 +151,7 @@ export function UpgradeButton({ tier }) {
 }
 
 function AiResult({ result, listingsById, mode, onSelect }) {
-  const { verdict, marketContext, recommendations, caveats } = result;
+  const { verdict, marketContext, recommendations, caveats, priorityNotes = [] } = result;
 
   return (
     <div className="ai-result">
@@ -134,6 +168,19 @@ function AiResult({ result, listingsById, mode, onSelect }) {
       </div>
 
       {marketContext && <p className="ai-market">{marketContext}</p>}
+
+      {priorityNotes.length > 0 && (
+        <div className="ai-priority-notes">
+          <h3 className="ai-picks-title">Your priorities</h3>
+          <ul>
+            {priorityNotes.map((n) => (
+              <li key={n.priority}>
+                <strong>{n.priority}:</strong> {n.note}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <h3 className="ai-picks-title">
         {recommendations.length > 0

@@ -8,6 +8,12 @@ import { areaProfile, floodZones } from "../../../lib/area";
 import { getUserPlan } from "../../../lib/plans";
 import { distanceMiles, fetchRadiusFor } from "../../results/geo";
 import { matchesFilters, parseFilters } from "../../results/quality";
+import {
+  checkListing,
+  describePreferences,
+  monthlyPayment,
+  parsePreferences,
+} from "../../results/preferences";
 
 // Area lookups plus the AI call can take a while.
 export const maxDuration = 90;
@@ -117,14 +123,55 @@ export async function POST(request) {
       );
     }
 
+    const commute = parseCommute(body.commute);
+    const ctx = { radiusMiles, commute };
+    const priorities = parsePreferences(body.priorities, mode, ctx);
+
+    // The AI sees at most MAX_LISTINGS homes. With must-haves, send the ones
+    // that meet them first (then nearest), so a strict budget doesn't leave the
+    // AI with only homes it can't recommend.
+    const mustHaves = priorities && {
+      items: priorities.items.filter((p) => p.must),
+      custom: [],
+    };
+    const mustMisses = (l) => (mustHaves?.items.length ? checkListing(l, mustHaves, mode, ctx).misses.length : 0);
+    const considered = nearby
+      .map((l) => ({ l, misses: mustMisses(l) }))
+      .sort((a, b) => a.misses - b.misses || a.l.distance - b.l.distance)
+      .slice(0, MAX_LISTINGS)
+      .map(({ l }) => l);
+
     // Public area data, plus the flood zone of each listing the AI sees.
-    const considered = nearby.slice(0, MAX_LISTINGS);
     const [profile, floods] = await Promise.all([
       areaProfile({ lat, lng, address, listingZips: considered.map((l) => l.zip) }),
       floodZones(considered),
     ]);
     const area = { ...profile, amenities: parseNearby(body.nearby) };
-    const enriched = considered.map((l, i) => ({ ...l, floodRisk: floods[i]?.risk ?? null }));
+
+    // Check each listing against the user's priorities here, so the AI gets
+    // exact answers instead of doing the arithmetic itself.
+    const payment = priorities?.items.find((p) => p.id === "payment")?.value;
+    const people = priorities?.items.find((p) => p.id === "roommates")?.value;
+    const enriched = considered.map((l, i) => {
+      const listing = { ...l, floodRisk: floods[i]?.risk ?? null };
+      if (!priorities) return listing;
+      const { misses, unknown } = checkListing(listing, priorities, mode, ctx);
+      return {
+        ...listing,
+        missesPriorities: misses,
+        priorityDataMissing: unknown,
+        ...(payment && { estMonthlyPayment: monthlyPayment(l.price, payment, l.hoaFee) }),
+        ...(people && { rentPerPerson: Math.round(l.price / people) }),
+      };
+    });
+    const subjectEstimate = estimate?.amount;
+    const subjectExtras =
+      priorities && subjectEstimate
+        ? {
+            ...(payment && { estMonthlyPayment: monthlyPayment(subjectEstimate, payment, 0) }),
+            ...(people && { rentPerPerson: Math.round(subjectEstimate / people) }),
+          }
+        : null;
 
     const result = await recommend({
       mode,
@@ -132,8 +179,10 @@ export async function POST(request) {
       estimate,
       listings: enriched,
       area,
-      commute: parseCommute(body.commute),
+      commute,
       filters,
+      priorities: describePreferences(priorities, mode),
+      subjectExtras,
       radiusMiles,
       userId,
       dailyLimit: plan.aiPerDay,

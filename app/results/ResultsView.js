@@ -19,6 +19,7 @@ import AiRecommendation, { UpgradeButton, useRecommendation } from "./AiRecommen
 import AreaInsights, { useArea } from "./AreaInsights";
 import CommuteBox, { formatCommute, useCommute } from "./Commute";
 import { useNearbyPlaces } from "./NearbyPlaces";
+import { usePriorities } from "./AiPreferences";
 import { animateCamera, cameraForCircle } from "./camera";
 import { BED_OPTIONS, defaultFilters, matchesFilters, TYPE_GROUPS, typeGroup } from "./quality";
 import { formatFacts, formatMiles, formatPrice, formatShortPrice } from "./format";
@@ -122,6 +123,8 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
         }
       : null;
   const nearby = useNearbyPlaces(resultsPosition);
+  const priorities = usePriorities(mode);
+  const wide = useIsWide();
   const ai = useRecommendation({
     position: resultsPosition,
     address: ready ? lookup.formattedAddress : null,
@@ -130,6 +133,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
     commute: commuteForAi,
     nearby: nearby.status === "ready" ? nearby.data : null,
     filters,
+    priorities: priorities.payload,
   });
   const area = useArea({
     // Wait for the listings, so their ZIP code fallback is known and the
@@ -188,6 +192,17 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
   const radiusControls = (
     <RadiusControls radiusMiles={radiusMiles} onPreset={pickPreset} />
   );
+  const aiSection = (
+    <AiRecommendation
+      ai={ai}
+      listingsById={listingsById}
+      mode={mode}
+      onSelect={setSelectedId}
+      canRun={comps.status === "ready" && shown.length > 0}
+      priorities={priorities}
+      prefsCtx={{ estimate: estimateAmount, radiusMiles }}
+    />
+  );
   const modeControls = <ModeToggle mode={mode} onChange={pickMode} />;
 
   return (
@@ -204,7 +219,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             streetViewControl={false}
             fullscreenControl={false}
             clickableIcons={false}
-            mapTypeControlOptions={{ position: ControlPosition.TOP_RIGHT }}
+            mapTypeControlOptions={{ position: ControlPosition.TOP_CENTER }}
             onClick={() => setSelectedId(null)}
             style={{ width: "100%", height: "100%" }}
           >
@@ -327,6 +342,10 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             <Estimate comps={comps} mode={mode} />
           </div>
 
+          {/* Narrower screens have no room for a second panel, so the AI
+              goes right under the address instead. */}
+          {!wide && aiSection}
+
           <AreaInsights
             area={area}
             nearby={nearby}
@@ -335,14 +354,6 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
           />
 
           <CommuteBox commute={commute} />
-
-          <AiRecommendation
-            ai={ai}
-            listingsById={listingsById}
-            mode={mode}
-            onSelect={setSelectedId}
-            canRun={comps.status === "ready" && comps.nearby.length > 0}
-          />
 
           <div className="panel-section">{radiusControls}</div>
 
@@ -359,8 +370,28 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
           />
         </aside>
       )}
+
+      {ready && stage === "results" && wide && (
+        <aside className="ai-panel" aria-label="AI recommendation">
+          {aiSection}
+        </aside>
+      )}
     </div>
   );
+}
+
+// Wide enough for the AI to get its own panel on the right.
+export const WIDE_QUERY = "(min-width: 1100px)";
+function useIsWide() {
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(WIDE_QUERY);
+    const update = () => setWide(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return wide;
 }
 
 function ModeToggle({ mode, onChange }) {
@@ -640,9 +671,10 @@ function insetFor(stage) {
       ? { top: 64, bottom: 330, left: 16, right: 16 }
       : { top: 72, bottom: 290, left: 40, right: 40 };
   }
-  return narrow
-    ? { top: window.innerHeight * 0.45, bottom: 16, left: 16, right: 16 }
-    : { top: 40, bottom: 40, left: 450, right: 40 };
+  if (narrow) return { top: window.innerHeight * 0.45, bottom: 16, left: 16, right: 16 };
+  // Room for the AI panel on the right when it's shown.
+  const right = window.matchMedia(WIDE_QUERY).matches ? 430 : 40;
+  return { top: 40, bottom: 40, left: 450, right };
 }
 
 // Drives the camera: the zoom-in on arrival, then framing the circle whenever
