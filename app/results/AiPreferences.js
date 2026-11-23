@@ -103,8 +103,12 @@ export default function AiPreferences({ priorities, mode, ctx }) {
               title={entry ? def.summary(entry.value, mode) : undefined}
               onClick={() => press(def)}
             >
+              {entry?.must && (
+                <span className="pref-star" aria-label="Must have">
+                  ★
+                </span>
+              )}
               {def.label}
-              {entry?.must && <span className="pref-must">Must</span>}
             </button>
           );
         })}
@@ -215,7 +219,7 @@ function PreferenceEditor({ def, entry, mode, ctx, onChange, onRemove, onDone })
         <div className="mode-toggle pref-importance" role="group" aria-label="Importance">
           {[
             [false, "Nice to have"],
-            [true, "Must have"],
+            [true, "★ Must have"],
           ].map(([must, label]) => (
             <button
               key={label}
@@ -228,7 +232,7 @@ function PreferenceEditor({ def, entry, mode, ctx, onChange, onRemove, onDone })
             </button>
           ))}
         </div>
-        <button type="button" className="pref-link" onClick={onRemove}>
+        <button type="button" className="pref-remove" onClick={onRemove}>
           Remove
         </button>
         <button type="button" className="pref-link" onClick={onDone}>

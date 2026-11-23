@@ -980,6 +980,14 @@ h3 {
   border-top: 0;
 }
 
+/* Medium screens: both panels slimmer so the map keeps some room between them. */
+@media (min-width: 761px) and (max-width: 1199px) {
+  .results-panel,
+  .ai-panel {
+    width: 340px;
+  }
+}
+
 @keyframes ai-panel-in {
   from {
     opacity: 0;
@@ -1039,14 +1047,28 @@ h3 {
   outline-offset: 2px;
 }
 
-.pref-must {
-  padding: 0 5px;
+.pref-star {
+  margin-right: -2px;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.pref-remove {
+  padding: 3px 12px;
+  border: 1px solid rgba(217, 83, 79, 0.6);
   border-radius: 999px;
-  background: var(--on-accent);
-  color: var(--accent);
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
+  background: rgba(217, 83, 79, 0.1);
+  color: #d9534f;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pref-remove:hover {
+  background: #d9534f;
+  border-color: #d9534f;
+  color: #ffffff;
 }
 
 .pref-custom button {

@@ -381,7 +381,8 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
 }
 
 // Wide enough for the AI to get its own panel on the right.
-export const WIDE_QUERY = "(min-width: 1100px)";
+// (Below 1200px both panels get slimmer; see globals.css.)
+export const WIDE_QUERY = "(min-width: 900px)";
 function useIsWide() {
   const [wide, setWide] = useState(false);
   useEffect(() => {
@@ -672,9 +673,11 @@ function insetFor(stage) {
       : { top: 72, bottom: 290, left: 40, right: 40 };
   }
   if (narrow) return { top: window.innerHeight * 0.45, bottom: 16, left: 16, right: 16 };
-  // Room for the AI panel on the right when it's shown.
-  const right = window.matchMedia(WIDE_QUERY).matches ? 430 : 40;
-  return { top: 40, bottom: 40, left: 450, right };
+  // Room for the panels (slimmer below 1200px), including the AI panel on
+  // the right when it's shown.
+  const panel = window.innerWidth < 1200 ? 356 : 416;
+  const right = window.matchMedia(WIDE_QUERY).matches ? panel + 24 : 40;
+  return { top: 40, bottom: 40, left: panel + 24, right };
 }
 
 // Drives the camera: the zoom-in on arrival, then framing the circle whenever
