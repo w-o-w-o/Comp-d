@@ -82,6 +82,20 @@ export function listingHistory(raw, now = Date.now()) {
   };
 }
 
+// Price per square foot, rounded to the dollar (null without a size, or for land).
+export function pricePerSqft(l) {
+  return l.sqft > 0 && l.price && typeGroup(l.type) !== "land" ? Math.round(l.price / l.sqft) : null;
+}
+
+// Median price per square foot of a set of homes; needs at least 3 with a size.
+export function medianPricePerSqft(listings) {
+  const values = listings.map(pricePerSqft).filter(Boolean).sort((a, b) => a - b);
+  if (values.length < 3) return null;
+  const mid = Math.floor(values.length / 2);
+  const median = values.length % 2 ? values[mid] : Math.round((values[mid - 1] + values[mid]) / 2);
+  return { median, count: values.length };
+}
+
 // Flags rentals with 3+ bedrooms priced below what a typical studio or
 // 1-bedroom nearby rents for: usually a per-room price, not the whole home.
 export function flagPerRoomPrices(listings, mode) {

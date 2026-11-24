@@ -143,7 +143,7 @@ export async function POST(request) {
 
     // Public area data, plus the flood zone of each listing the AI sees.
     const [profile, floods] = await Promise.all([
-      areaProfile({ lat, lng, address, listingZips: considered.map((l) => l.zip) }),
+      areaProfile({ lat, lng, address, listingZips: considered.map((l) => l.zip), mode }),
       floodZones(considered),
     ]);
     const area = { ...profile, amenities: parseNearby(body.nearby) };

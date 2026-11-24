@@ -21,7 +21,15 @@ import CommuteBox, { formatCommute, useCommute } from "./Commute";
 import { useNearbyPlaces } from "./NearbyPlaces";
 import { usePriorities } from "./AiPreferences";
 import { animateCamera, cameraForCircle } from "./camera";
-import { BED_OPTIONS, defaultFilters, matchesFilters, TYPE_GROUPS, typeGroup } from "./quality";
+import {
+  BED_OPTIONS,
+  defaultFilters,
+  matchesFilters,
+  medianPricePerSqft,
+  pricePerSqft,
+  TYPE_GROUPS,
+  typeGroup,
+} from "./quality";
 import { formatFacts, formatMiles, formatPrice, formatShortPrice } from "./format";
 import {
   DEFAULT_RADIUS_MILES,
@@ -142,6 +150,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
     address: ready ? lookup.formattedAddress : null,
     radiusMiles,
     fallbackZip: mostCommonZip(comps.nearby),
+    mode,
   });
   // globalThis.Map: the built-in Map, since `Map` here is the Google map component.
   const listingsById = new globalThis.Map(comps.nearby.map((l) => [l.id, l]));
@@ -351,6 +360,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             nearby={nearby}
             mode={mode}
             subjectBeds={comps.status === "ready" ? comps.data.estimate?.subject?.beds : null}
+            address={lookup.formattedAddress}
           />
 
           <CommuteBox commute={commute} />
@@ -492,6 +502,7 @@ function Listings({ comps, shown, filters, onFilters, mode, radiusMiles, selecte
       <p className="panel-muted listing-freshness">
         Listing data from {formatDataDate(comps.data.listingsFetchedAt)}. Some homes may already be taken.
       </p>
+      {mode === "buy" && <PricePerSqftSummary shown={shown} estimate={comps.data.estimate} />}
       {total > 0 && (
         <ListingFilters
           filters={filters}
@@ -566,6 +577,26 @@ function ListingFilters({ filters, onChange, showLand }) {
   );
 }
 
+// Typical price per square foot of the homes shown, and where the subject's
+// estimate falls against it.
+function PricePerSqftSummary({ shown, estimate }) {
+  const typical = medianPricePerSqft(shown);
+  if (!typical) return null;
+  const subject = estimate?.amount && estimate.subject?.sqft ? Math.round(estimate.amount / estimate.subject.sqft) : null;
+  const diff = subject ? Math.round(((subject - typical.median) / typical.median) * 100) : null;
+  return (
+    <p className="ppsf-summary">
+      Median <strong>${typical.median.toLocaleString()}/sq ft</strong> across {typical.count} homes
+      {subject != null && (
+        <>
+          {" · "}this property&apos;s estimate: ${subject.toLocaleString()}/sq ft
+          {diff !== 0 && ` (${Math.abs(diff)}% ${diff > 0 ? "above" : "below"})`}
+        </>
+      )}
+    </p>
+  );
+}
+
 function formatDataDate(iso) {
   if (!iso) return "recently";
   const days = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000);
@@ -612,7 +643,12 @@ function ListingCard({ listing: l, mode, commute, compact = false }) {
     <div className={compact ? "home-card home-card-compact" : "home-card"}>
       <HomePhoto lat={l.lat} lng={l.lng} alt={`Street view of ${l.address}`} />
       <div className="home-card-body">
-        <span className="listing-price">{formatPrice(l.price, mode)}</span>
+        <span className="listing-price">
+          {formatPrice(l.price, mode)}
+          {mode === "buy" && pricePerSqft(l) && (
+            <span className="listing-ppsf">${pricePerSqft(l).toLocaleString()}/sq ft</span>
+          )}
+        </span>
         <span className="listing-facts">
           {[formatFacts(l), `${formatMiles(l.distance)} away`].filter(Boolean).join(" · ")}
         </span>

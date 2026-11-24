@@ -7,7 +7,7 @@ import { formatCount } from "./NearbyPlaces";
 const BEDROOM_LABELS = ["Studio", "1 bd", "2 bd", "3 bd", "4 bd"];
 
 // Loads public data about the searched property's area from /api/area.
-export function useArea({ position, address, radiusMiles, fallbackZip }) {
+export function useArea({ position, address, radiusMiles, fallbackZip, mode }) {
   const [state, setState] = useState({ status: "idle" });
   // Area facts barely depend on the radius, so only refetch per half mile.
   const radiusBucket = Math.ceil(radiusMiles * 2) / 2;
@@ -22,6 +22,7 @@ export function useArea({ position, address, radiusMiles, fallbackZip }) {
         lng: String(position.lng),
         radius: String(radiusBucket),
         address: address || "",
+        mode: mode || "rent",
       });
       if (fallbackZip) params.set("fallbackZip", fallbackZip);
 
@@ -38,7 +39,7 @@ export function useArea({ position, address, radiusMiles, fallbackZip }) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [position, address, radiusBucket, fallbackZip]);
+  }, [position, address, radiusBucket, fallbackZip, mode]);
 
   return state;
 }
@@ -49,7 +50,7 @@ function percent(n) {
 }
 
 // `nearby` is the Google Places lookup from useNearbyPlaces.
-export default function AreaInsights({ area, nearby, mode, subjectBeds }) {
+export default function AreaInsights({ area, nearby, mode, subjectBeds, address }) {
   if (area.status === "idle") return null;
 
   return (
@@ -60,7 +61,170 @@ export default function AreaInsights({ area, nearby, mode, subjectBeds }) {
       {area.status === "ready" && (
         <AreaFacts data={area.data} nearby={nearby} mode={mode} subjectBeds={subjectBeds} />
       )}
+      {area.status === "ready" && mode === "buy" && <BuyerFacts data={area.data} address={address} />}
     </div>
+  );
+}
+
+const LEVEL_LABELS = { Elementary: "Elementary", Middle: "Middle", High: "High" };
+const commas = (n) => n.toLocaleString();
+// NCES grade codes: "KG–05" -> "K–5", "PK–08" -> "Pre-K–8".
+const formatGrades = (g) =>
+  g
+    .split("–")
+    .map((x) => (x === "KG" || x === "K" ? "K" : x === "PK" ? "Pre-K" : String(Number(x) || x)))
+    .join("–");
+
+// Schools, walkability, crime and zoning: shown when buying.
+function BuyerFacts({ data, address }) {
+  const { schools, walkability, crime } = data;
+  return (
+    <div className="buyer-facts">
+      <h3>Schools nearby</h3>
+      {schools?.nearest?.length ? (
+        <>
+          <ul className="school-list">
+            {schools.nearest.map((s) => (
+              <li key={s.name}>
+                <span className="school-level">{LEVEL_LABELS[s.level]}</span>
+                <span className="school-name">
+                  {s.name}
+                  {s.charter && <span className="school-charter">Charter</span>}
+                </span>
+                <span className="area-note">
+                  {[
+                    `${s.miles} mi`,
+                    s.grades && `grades ${formatGrades(s.grades)}`,
+                    s.students && `${commas(s.students)} students`,
+                    s.studentsPerTeacher && `${s.studentsPerTeacher} per teacher`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="panel-muted pref-hint">
+            Nearest public schools, not necessarily the assigned ones. Check {schools.nearest[0].district} for
+            attendance zones.
+          </p>
+        </>
+      ) : (
+        <p className="panel-muted">{schools ? "No public schools within 3 mi." : "School data isn't available right now."}</p>
+      )}
+
+      <dl className="area-facts">
+        {walkability && (
+          <div className="area-fact">
+            <dt>Walkability (EPA)</dt>
+            <dd>
+              {walkability.score} of 20 · {walkability.label}
+              <span className="area-note">Based on street layout, mix of shops and homes, and transit</span>
+            </dd>
+          </div>
+        )}
+        {crime ? (
+          <>
+            <CrimeRow label="Violent crime" rates={crime.violent} />
+            <CrimeRow label="Property crime" rates={crime.property} />
+            <p className="panel-muted pref-hint">
+              Reported to the FBI by {crime.agency} in {crime.year}, per 100,000 residents. Covers the whole
+              jurisdiction, not this block.
+            </p>
+          </>
+        ) : (
+          <div className="area-fact">
+            <dt>Crime (FBI)</dt>
+            <dd>Not available for this spot</dd>
+          </div>
+        )}
+      </dl>
+
+      <Zoning address={address} />
+
+      <p className="panel-credit">Sources: NCES, EPA, FBI Crime Data Explorer.</p>
+    </div>
+  );
+}
+
+function CrimeRow({ label, rates }) {
+  const compare = rates.national
+    ? Math.round(((rates.local - rates.national) / rates.national) * 100)
+    : null;
+  const high = compare != null && compare >= 25;
+  return (
+    <div className={high ? "area-fact area-fact-warn" : "area-fact"}>
+      <dt>{label}</dt>
+      <dd>
+        {commas(rates.local)} per 100k
+        {compare != null && ` · ${Math.abs(compare)}% ${compare >= 0 ? "above" : "below"} U.S.`}
+        <span className="area-note">
+          {[rates.state && `State ${commas(rates.state)}`, rates.national && `U.S. ${commas(rates.national)}`]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
+      </dd>
+    </div>
+  );
+}
+
+// Zoning comes from the county property record, which costs a paid lookup,
+// so it is only fetched when the user asks (a saved answer shows right away).
+function Zoning({ address }) {
+  const [state, setState] = useState({ status: "checking" });
+
+  useEffect(() => {
+    if (!address) return;
+    let cancelled = false;
+    setState({ status: "checking" });
+    fetch(`/api/zoning?${new URLSearchParams({ address })}`)
+      .then((r) => r.json())
+      .then((body) => !cancelled && setState(body.status === "ready" ? body : { status: "idle" }))
+      .catch(() => !cancelled && setState({ status: "idle" }));
+    return () => {
+      cancelled = true;
+    };
+  }, [address]);
+
+  async function lookUp() {
+    setState({ status: "loading" });
+    try {
+      const res = await fetch(`/api/zoning?${new URLSearchParams({ address, fetch: "1" })}`);
+      const body = await res.json();
+      setState(res.ok ? body : { status: "error", message: body.error });
+    } catch {
+      setState({ status: "error", message: "Couldn't look up zoning." });
+    }
+  }
+
+  return (
+    <dl className="area-facts zoning">
+      <div className="area-fact">
+        <dt>Zoning</dt>
+        <dd>
+          {state.status === "ready" ? (
+            <>
+              {state.zoning || "Not on the county record"}
+              {state.lotSize ? ` · ${commas(state.lotSize)} sq ft lot` : ""}
+              <span className="area-note">
+                From the county property record. Codes differ by city; check the city&apos;s zoning map for what&apos;s
+                allowed.
+              </span>
+            </>
+          ) : state.status === "loading" || state.status === "checking" ? (
+            <span className="panel-muted">{state.status === "loading" ? "Looking up…" : "…"}</span>
+          ) : (
+            <>
+              <button type="button" className="btn btn-small" onClick={lookUp}>
+                Look up zoning
+              </button>
+              {state.status === "error" && <span className="panel-error"> {state.message}</span>}
+              <span className="area-note">Uses one property lookup</span>
+            </>
+          )}
+        </dd>
+      </div>
+    </dl>
   );
 }
 

@@ -1206,6 +1206,68 @@ h3 {
   font-size: 0.82rem;
 }
 
+/* Price per square foot (buying) */
+.listing-ppsf {
+  margin-left: 8px;
+  font-weight: 500;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.ppsf-summary {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+}
+
+/* Schools, walkability, crime, zoning (buying) */
+.buyer-facts {
+  margin-top: 14px;
+}
+
+.buyer-facts h3 {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+}
+
+.school-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.school-list li {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-alt);
+}
+
+.school-level {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.school-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.school-charter {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.zoning .btn {
+  margin-top: 4px;
+}
+
 .listing-filters {
   display: grid;
   gap: 8px;
