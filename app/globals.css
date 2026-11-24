@@ -8,6 +8,9 @@
   --accent-soft: #dcefe6;
   --on-accent: #ffffff;
   --border: #dedcd4;
+  --scroll-thumb: rgba(28, 31, 29, 0.22);
+  --scroll-thumb-hover: rgba(28, 31, 29, 0.4);
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,11 +24,42 @@
     --accent-soft: #1d3a2f;
     --on-accent: #0f1312;
     --border: #2f3533;
+    --scroll-thumb: rgba(236, 239, 237, 0.18);
+    --scroll-thumb-hover: rgba(236, 239, 237, 0.34);
+    color-scheme: dark;
   }
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Scrollbars: a thin, theme-colored thumb on a transparent track. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-hover);
+  background-clip: padding-box;
 }
 
 html {
@@ -407,6 +441,57 @@ h3 {
   border: 1px solid var(--border);
   border-radius: 16px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+/* Narrow screens: Property / AI analysis tabs at the top of the one panel */
+.panel-tabs {
+  position: sticky;
+  top: -16px;
+  z-index: 2;
+  display: flex;
+  margin: -16px -16px 12px;
+  padding: 6px 10px 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+}
+
+.panel-tab {
+  flex: 1;
+  padding: 10px 8px 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.panel-tab:hover {
+  color: var(--text);
+}
+
+.panel-tab-active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.panel-tab-count {
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.75rem;
+}
+
+.panel-tabs + .ai-section {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .back-link {
@@ -1669,6 +1754,11 @@ h3 {
     width: auto;
     max-height: 45%;
     padding: 12px;
+  }
+
+  .panel-tabs {
+    top: -12px;
+    margin: -12px -12px 10px;
   }
 
   .panel-section {

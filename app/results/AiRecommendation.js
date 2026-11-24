@@ -139,15 +139,17 @@ export default function AiRecommendation({
         <h2>AI recommendation</h2>
         <span className="ai-head-right">
           <span className="ai-badge">Claude</span>
-          <button
-            type="button"
-            className="ai-minimize"
-            onClick={() => onCollapse(true)}
-            aria-label="Minimize the AI panel"
-            title="Minimize"
-          >
-            –
-          </button>
+          {onCollapse && (
+            <button
+              type="button"
+              className="ai-minimize"
+              onClick={() => onCollapse(true)}
+              aria-label="Minimize the AI panel"
+              title="Minimize"
+            >
+              –
+            </button>
+          )}
         </span>
       </div>
 

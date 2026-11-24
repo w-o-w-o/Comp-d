@@ -134,6 +134,8 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
   const priorities = usePriorities(mode);
   const wide = useIsWide();
   const [aiCollapsed, setAiCollapsed] = useAiCollapsed();
+  // Narrow screens: which tab of the shared panel is showing.
+  const [panelTab, setPanelTab] = useState("property");
   const ai = useRecommendation({
     position: resultsPosition,
     address: ready ? lookup.formattedAddress : null,
@@ -201,6 +203,8 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
   const radiusControls = (
     <RadiusControls radiusMiles={radiusMiles} onPreset={pickPreset} />
   );
+  // Minimizing is for the separate right-hand panel; on narrow screens the
+  // AI has its own tab instead.
   const aiSection = (
     <AiRecommendation
       ai={ai}
@@ -210,8 +214,8 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
       canRun={comps.status === "ready" && shown.length > 0}
       priorities={priorities}
       prefsCtx={{ estimate: estimateAmount, radiusMiles }}
-      collapsed={aiCollapsed}
-      onCollapse={setAiCollapsed}
+      collapsed={wide && aiCollapsed}
+      onCollapse={wide ? setAiCollapsed : null}
     />
   );
   const modeControls = <ModeToggle mode={mode} onChange={pickMode} />;
@@ -340,6 +344,33 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
 
       {ready && stage === "results" && (
         <aside className="results-panel">
+          {/* Narrower screens have no room for a second panel, so the
+              property details and the AI share this one, switched by tabs. */}
+          {!wide && (
+            <div className="panel-tabs" role="tablist" aria-label="Panel">
+              {[
+                ["property", "Property"],
+                ["ai", "AI analysis"],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={panelTab === id}
+                  className={panelTab === id ? "panel-tab panel-tab-active" : "panel-tab"}
+                  onClick={() => setPanelTab(id)}
+                >
+                  {label}
+                  {id === "ai" && ai.picks.length > 0 && <span className="panel-tab-count">{ai.picks.length}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!wide && panelTab === "ai" ? (
+            aiSection
+          ) : (
+          <>
           {/* Back instead of a search bar: re-searching the same address
               would repeat lookups for no benefit. */}
           <Link href="/search" className="back-link">
@@ -352,10 +383,6 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             <div className="panel-row">{modeControls}</div>
             <Estimate comps={comps} mode={mode} />
           </div>
-
-          {/* Narrower screens have no room for a second panel, so the AI
-              goes right under the address instead. */}
-          {!wide && aiSection}
 
           <AreaInsights
             area={area}
@@ -379,6 +406,8 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             onSelect={setSelectedId}
             commute={commute}
           />
+          </>
+          )}
         </aside>
       )}
 
