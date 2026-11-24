@@ -1219,7 +1219,7 @@ h3 {
   font-size: 0.85rem;
 }
 
-/* Schools, walkability, crime, zoning (buying) */
+/* Schools, walkability, crime (buying) */
 .buyer-facts {
   margin-top: 14px;
 }
@@ -1267,10 +1267,6 @@ h3 {
 .school-district {
   margin: 0 0 8px;
   font-size: 0.88rem;
-}
-
-.zoning .btn {
-  margin-top: 4px;
 }
 
 .listing-filters {

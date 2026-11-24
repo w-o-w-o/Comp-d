@@ -50,7 +50,7 @@ function percent(n) {
 }
 
 // `nearby` is the Google Places lookup from useNearbyPlaces.
-export default function AreaInsights({ area, nearby, mode, subjectBeds, address }) {
+export default function AreaInsights({ area, nearby, mode, subjectBeds }) {
   if (area.status === "idle") return null;
 
   return (
@@ -61,7 +61,7 @@ export default function AreaInsights({ area, nearby, mode, subjectBeds, address 
       {area.status === "ready" && (
         <AreaFacts data={area.data} nearby={nearby} mode={mode} subjectBeds={subjectBeds} />
       )}
-      {area.status === "ready" && mode === "buy" && <BuyerFacts data={area.data} address={address} />}
+      {area.status === "ready" && mode === "buy" && <BuyerFacts data={area.data} />}
     </div>
   );
 }
@@ -75,8 +75,8 @@ const formatGrades = (g) =>
     .map((x) => (x === "KG" || x === "K" ? "K" : x === "PK" ? "Pre-K" : String(Number(x) || x)))
     .join("–");
 
-// Schools, walkability, crime and zoning: shown when buying.
-function BuyerFacts({ data, address }) {
+// Schools, walkability and crime: shown when buying.
+function BuyerFacts({ data }) {
   const { schools, walkability, crime } = data;
   return (
     <div className="buyer-facts">
@@ -149,8 +149,6 @@ function BuyerFacts({ data, address }) {
         )}
       </dl>
 
-      <Zoning address={address} />
-
       <p className="panel-credit">Sources: NCES, EPA, FBI Crime Data Explorer.</p>
     </div>
   );
@@ -177,66 +175,6 @@ function CrimeRow({ label, rates }) {
   );
 }
 
-// Zoning comes from the county property record, which costs a paid lookup,
-// so it is only fetched when the user asks (a saved answer shows right away).
-function Zoning({ address }) {
-  const [state, setState] = useState({ status: "checking" });
-
-  useEffect(() => {
-    if (!address) return;
-    let cancelled = false;
-    setState({ status: "checking" });
-    fetch(`/api/zoning?${new URLSearchParams({ address })}`)
-      .then((r) => r.json())
-      .then((body) => !cancelled && setState(body.status === "ready" ? body : { status: "idle" }))
-      .catch(() => !cancelled && setState({ status: "idle" }));
-    return () => {
-      cancelled = true;
-    };
-  }, [address]);
-
-  async function lookUp() {
-    setState({ status: "loading" });
-    try {
-      const res = await fetch(`/api/zoning?${new URLSearchParams({ address, fetch: "1" })}`);
-      const body = await res.json();
-      setState(res.ok ? body : { status: "error", message: body.error });
-    } catch {
-      setState({ status: "error", message: "Couldn't look up zoning." });
-    }
-  }
-
-  return (
-    <dl className="area-facts zoning">
-      <div className="area-fact">
-        <dt>Zoning</dt>
-        <dd>
-          {state.status === "ready" ? (
-            <>
-              {state.zoning || "Not listed for this address"}
-              {state.lotSize ? ` · ${commas(state.lotSize)} sq ft lot` : ""}
-              <span className="area-note">
-                {state.zoning
-                  ? "From the county property record. Codes differ by city; check the city's zoning map for what's allowed."
-                  : `The property record has no zoning code. Check the ${state.county ? `${state.county} County or ` : ""}city zoning map.`}
-              </span>
-            </>
-          ) : state.status === "loading" || state.status === "checking" ? (
-            <span className="panel-muted">{state.status === "loading" ? "Looking up…" : "…"}</span>
-          ) : (
-            <>
-              <button type="button" className="btn btn-small" onClick={lookUp}>
-                Look up zoning
-              </button>
-              {state.status === "error" && <span className="panel-error"> {state.message}</span>}
-              <span className="area-note">Uses one property lookup</span>
-            </>
-          )}
-        </dd>
-      </div>
-    </dl>
-  );
-}
 
 function AreaFacts({ data, nearby, mode, subjectBeds }) {
   const { fairMarketRent: fmr, neighborhood, trends, flood } = data;

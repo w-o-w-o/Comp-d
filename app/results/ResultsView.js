@@ -360,7 +360,6 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             nearby={nearby}
             mode={mode}
             subjectBeds={comps.status === "ready" ? comps.data.estimate?.subject?.beds : null}
-            address={lookup.formattedAddress}
           />
 
           <CommuteBox commute={commute} />
