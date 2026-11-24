@@ -65,6 +65,8 @@ export function usePriorities(mode) {
     removeCustom: (text) => update((m) => ({ ...m, custom: m.custom.filter((c) => c !== text) })),
     // Puts back a saved set of priorities (for Cancel).
     replace: (snapshot) => update(() => snapshot),
+    // Turns off every priority, built-in and custom, for this rent/buy choice.
+    clearAll: () => update(() => ({ items: {}, custom: [] })),
   };
 }
 
@@ -102,7 +104,21 @@ export default function AiPreferences({ priorities, mode, ctx }) {
     <div className="ai-prefs">
       <div className="ai-prefs-head">
         <h3>Your priorities</h3>
-        <span className="panel-muted">{activeCount ? `${activeCount} selected` : "Optional"}</span>
+        <span className="ai-prefs-head-right">
+          <span className="panel-muted">{activeCount ? `${activeCount} selected` : "Optional"}</span>
+          {activeCount > 0 && (
+            <button
+              type="button"
+              className="pref-remove"
+              onClick={() => {
+                priorities.clearAll();
+                setOpen(null);
+              }}
+            >
+              Deselect all
+            </button>
+          )}
+        </span>
       </div>
       <div className="pref-chips" role="group" aria-label="Priorities for the AI">
         {defs.map((def) => {

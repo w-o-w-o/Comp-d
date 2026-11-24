@@ -196,8 +196,13 @@ export default function AiRecommendation({
             {ai.stale ? "Re-analyze" : "Analyze with AI"}
           </button>
           {canCancel && (
-            <button type="button" className="ai-cancel" onClick={cancel}>
-              Cancel and go back to the last analysis
+            <button
+              type="button"
+              className="ai-cancel"
+              onClick={cancel}
+              title="Undo your changes and go back to the last analysis"
+            >
+              Cancel
             </button>
           )}
         </>

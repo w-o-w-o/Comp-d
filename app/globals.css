@@ -1563,22 +1563,32 @@ h3 {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
+/* Same red as the priority Remove button */
 .ai-cancel {
   display: block;
   width: 100%;
   margin-top: 6px;
   padding: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(217, 83, 79, 0.6);
   border-radius: 10px;
-  background: transparent;
-  color: var(--text);
+  background: rgba(217, 83, 79, 0.1);
+  color: #d9534f;
   font: inherit;
-  font-size: 0.88rem;
+  font-size: 0.9rem;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .ai-cancel:hover {
-  background: var(--bg-alt);
+  background: #d9534f;
+  border-color: #d9534f;
+  color: #ffffff;
+}
+
+.ai-prefs-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .ai-badge {
