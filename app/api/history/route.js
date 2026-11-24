@@ -2,6 +2,14 @@ import { auth } from "@clerk/nextjs/server";
 import { sql } from "../../../lib/db";
 import { deleteSearch, saveSearch } from "../../../lib/history";
 
+// When the listing data was fetched: a real date, not in the future, and no
+// older than the RentCast cache (otherwise unknown).
+function fetchedAt(v) {
+  const t = typeof v === "string" ? Date.parse(v) : NaN;
+  if (!Number.isFinite(t) || t > Date.now() + 60_000 || t < Date.now() - 8 * 86_400_000) return null;
+  return new Date(t).toISOString();
+}
+
 // POST /api/history — saves (or refreshes) a search the user just viewed.
 export async function POST(request) {
   const { userId } = await auth();
@@ -39,6 +47,7 @@ export async function POST(request) {
     radiusMiles: Math.round(radiusMiles * 100) / 100,
     estimateAmount: number(body.estimateAmount),
     listingCount: Number.isInteger(body.listingCount) ? body.listingCount : null,
+    dataFetchedAt: fetchedAt(body.dataFetchedAt),
   });
   return Response.json({ saved: true });
 }

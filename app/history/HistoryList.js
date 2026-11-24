@@ -15,6 +15,13 @@ function timeAgo(date) {
   return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function expiresIn(date) {
+  const hours = (new Date(date).getTime() - Date.now()) / 3_600_000;
+  if (hours < 24) return "Expires today";
+  const days = Math.ceil(hours / 24);
+  return `Expires in ${days} day${days === 1 ? "" : "s"}`;
+}
+
 // Saved searches with buttons to reopen or remove each one.
 // `entries` come from the server with an `href` that reopens the results.
 export default function HistoryList({ entries: initial, compact = false }) {
@@ -35,7 +42,8 @@ export default function HistoryList({ entries: initial, compact = false }) {
   if (entries.length === 0) {
     return (
       <p className="panel-muted">
-        No saved searches yet. Every address you search is saved here automatically.
+        No saved searches yet. Every address you search is saved here automatically for 7 days, while
+        its listing data is current.
       </p>
     );
   }
@@ -62,6 +70,9 @@ export default function HistoryList({ entries: initial, compact = false }) {
                   <span>Est. {formatPrice(e.estimate_amount, e.mode)}</span>
                 )}
                 <span>{timeAgo(e.last_viewed_at)}</span>
+                <span className="history-expires" title="Listing data is refreshed after 7 days, so the search is removed then">
+                  {expiresIn(e.expires_at)}
+                </span>
               </span>
             </Link>
             <button

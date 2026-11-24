@@ -20,16 +20,20 @@ const RATING_LABELS = {
 // `priorities` is what the user told the AI to weigh (or null).
 export function useRecommendation({ position, address, mode, radiusMiles, commute, nearby, filters, priorities }) {
   const [state, setState] = useState({ status: "idle" });
+  // The priorities and filters the last analysis used (for Cancel). Kept here,
+  // not in the panel, so it survives the panel being hidden behind a tab.
+  const [ranWith, setRanWith] = useState(null);
   const commuteKey = commute ? `${commute.destination}|${commute.travelMode}` : "";
-  const filterKey = filters ? `${filters.beds.join(",")}/${filters.types.join(",")}` : "";
-  const keyFor = (p) =>
+  const filterKeyOf = (f) => (f ? `${f.beds.join(",")}/${f.types.join(",")}` : "");
+  const keyFor = (p, f) =>
     position
-      ? `${mode}|${radiusMiles.toFixed(2)}|${position.lat},${position.lng}|${commuteKey}|${filterKey}|${JSON.stringify(p)}`
+      ? `${mode}|${radiusMiles.toFixed(2)}|${position.lat},${position.lng}|${commuteKey}|${filterKeyOf(f)}|${JSON.stringify(p)}`
       : null;
-  const searchKey = keyFor(priorities);
+  const searchKey = keyFor(priorities, filters);
 
-  async function run() {
+  async function run(snapshot = null) {
     const forKey = searchKey;
+    setRanWith(snapshot);
     setState({ status: "loading", forKey });
     try {
       const res = await fetch("/api/recommend", {
@@ -61,10 +65,10 @@ export function useRecommendation({ position, address, mode, radiusMiles, commut
   const stale = state.status !== "idle" && state.forKey !== searchKey;
   const picks =
     state.status === "ready" && !stale ? state.data.recommendations.map((r) => r.listingId) : [];
-  // Would these priorities bring back the last analysis (everything else
-  // unchanged)?
-  const matchesLast = (p) => state.status !== "idle" && state.forKey === keyFor(p);
-  return { ...state, stale, picks, run, matchesLast };
+  // Would these priorities and filters bring back the last analysis
+  // (everything else unchanged)?
+  const matchesLast = (p, f) => state.status !== "idle" && state.forKey === keyFor(p, f);
+  return { ...state, stale, picks, run, matchesLast, ranWith };
 }
 
 // Whether the AI panel is minimized to a bubble, remembered in this browser.
@@ -95,26 +99,28 @@ export default function AiRecommendation({
   prefsCtx,
   collapsed,
   onCollapse,
+  filters,
+  onFilters,
+  filtersControl,
 }) {
   const hasResult = ai.status !== "idle";
   // Once there's a result, the priorities fold away behind a button.
   const [prefsOpen, setPrefsOpen] = useState(false);
-  // The priorities the last analysis used, so Cancel can bring them back.
-  const [ranWith, setRanWith] = useState(null);
+  const { ranWith } = ai;
   const showPrefs = !hasResult || prefsOpen;
   const selectedCount = priorities.payload
     ? priorities.payload.items.length + priorities.payload.custom.length
     : 0;
-  const canCancel = ai.stale && ranWith && ai.matchesLast(ranWith.payload);
+  const canCancel = ai.stale && ranWith && ai.matchesLast(ranWith.payload, ranWith.filters);
 
   function run() {
     setPrefsOpen(false);
-    setRanWith({ current: priorities.current, payload: priorities.payload });
-    ai.run();
+    ai.run({ current: priorities.current, payload: priorities.payload, filters });
   }
 
   function cancel() {
     priorities.replace(ranWith.current);
+    onFilters(ranWith.filters);
     setPrefsOpen(false);
   }
 
@@ -161,7 +167,18 @@ export default function AiRecommendation({
       )}
 
       {showPrefs ? (
-        <AiPreferences priorities={priorities} mode={mode} ctx={prefsCtx} />
+        <>
+          {filtersControl && (
+            <div className="ai-compare">
+              <div className="ai-prefs-head">
+                <h3>Homes to compare</h3>
+                <span className="panel-muted">Same as the listing filters</span>
+              </div>
+              {filtersControl}
+            </div>
+          )}
+          <AiPreferences priorities={priorities} mode={mode} ctx={prefsCtx} />
+        </>
       ) : (
         <button type="button" className="chip ai-prefs-toggle" onClick={() => setPrefsOpen(true)}>
           Change priorities{selectedCount ? ` (${selectedCount})` : ""}
@@ -172,7 +189,7 @@ export default function AiRecommendation({
         <>
           {ai.stale && (
             <p className="panel-muted">
-              Your priorities, radius, rent/buy choice, filters, or commute changed since the last analysis.
+              Your priorities, homes to compare, radius, rent/buy choice, or commute changed since the last analysis.
             </p>
           )}
           <button type="button" className="btn ai-run" onClick={run} disabled={!canRun}>

@@ -1095,6 +1095,23 @@ h3 {
   margin-top: 12px;
 }
 
+.ai-compare {
+  margin-top: 12px;
+}
+
+.ai-compare h3 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.ai-compare .listing-filters {
+  margin-top: 6px;
+}
+
+.history-expires {
+  color: var(--muted);
+}
+
 .ai-prefs-head {
   display: flex;
   align-items: baseline;

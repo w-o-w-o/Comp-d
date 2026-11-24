@@ -161,6 +161,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
   // when the radius or rent/buy choice changes.
   const nearbyCount = comps.nearby.length;
   const estimateAmount = comps.status === "ready" ? comps.data.estimate?.amount ?? null : null;
+  const dataFetchedAt = comps.status === "ready" ? comps.data.listingsFetchedAt ?? null : null;
   useEffect(() => {
     if (!ready || stage !== "results" || comps.status !== "ready") return;
     const timer = setTimeout(() => {
@@ -177,11 +178,12 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
           radiusMiles,
           estimateAmount,
           listingCount: nearbyCount,
+          dataFetchedAt,
         }),
       }).catch((err) => console.error("Couldn't save search:", err));
     }, 1000);
     return () => clearTimeout(timer);
-  }, [ready, stage, comps.status, address, placeId, lookup, mode, radiusMiles, estimateAmount, nearbyCount]);
+  }, [ready, stage, comps.status, address, placeId, lookup, mode, radiusMiles, estimateAmount, nearbyCount, dataFetchedAt]);
 
   function pickPreset(miles) {
     setRadiusMiles(miles);
@@ -216,6 +218,17 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
       prefsCtx={{ estimate: estimateAmount, radiusMiles }}
       collapsed={wide && aiCollapsed}
       onCollapse={wide ? setAiCollapsed : null}
+      filters={filters}
+      onFilters={setFilters}
+      filtersControl={
+        comps.status === "ready" && comps.nearby.length > 0 ? (
+          <ListingFilters
+            filters={filters}
+            onChange={setFilters}
+            showLand={comps.nearby.some((l) => typeGroup(l.type) === "land") || filters.types.includes("land")}
+          />
+        ) : null
+      }
     />
   );
   const modeControls = <ModeToggle mode={mode} onChange={pickMode} />;
