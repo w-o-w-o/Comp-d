@@ -81,6 +81,11 @@ function BuyerFacts({ data, address }) {
   return (
     <div className="buyer-facts">
       <h3>Schools nearby</h3>
+      {schools?.districts?.length > 0 && (
+        <p className="school-district">
+          School district: <strong>{schools.districts.join(" and ")}</strong>
+        </p>
+      )}
       {schools?.nearest?.length ? (
         <>
           <ul className="school-list">
@@ -90,6 +95,9 @@ function BuyerFacts({ data, address }) {
                 <span className="school-name">
                   {s.name}
                   {s.charter && <span className="school-charter">Charter</span>}
+                  {schools.districts?.length > 0 && !s.inDistrict && !s.charter && (
+                    <span className="school-charter">Other district</span>
+                  )}
                 </span>
                 <span className="area-note">
                   {[
@@ -105,8 +113,9 @@ function BuyerFacts({ data, address }) {
             ))}
           </ul>
           <p className="panel-muted pref-hint">
-            Nearest public schools, not necessarily the assigned ones. Check {schools.nearest[0].district} for
-            attendance zones.
+            Nearest public schools{schools.districts?.length ? " in this district" : ""}. The assigned school can
+            differ; check {schools.districts?.[0] || schools.nearest[0].district}&apos;s school finder for this
+            address.
           </p>
         </>
       ) : (
@@ -204,11 +213,12 @@ function Zoning({ address }) {
         <dd>
           {state.status === "ready" ? (
             <>
-              {state.zoning || "Not on the county record"}
+              {state.zoning || "Not listed for this address"}
               {state.lotSize ? ` · ${commas(state.lotSize)} sq ft lot` : ""}
               <span className="area-note">
-                From the county property record. Codes differ by city; check the city&apos;s zoning map for what&apos;s
-                allowed.
+                {state.zoning
+                  ? "From the county property record. Codes differ by city; check the city's zoning map for what's allowed."
+                  : `The property record has no zoning code. Check the ${state.county ? `${state.county} County or ` : ""}city zoning map.`}
               </span>
             </>
           ) : state.status === "loading" || state.status === "checking" ? (

@@ -1264,6 +1264,11 @@ h3 {
   border: 1px solid var(--border);
 }
 
+.school-district {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+}
+
 .zoning .btn {
   margin-top: 4px;
 }
