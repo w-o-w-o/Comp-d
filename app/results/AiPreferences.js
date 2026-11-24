@@ -63,6 +63,8 @@ export function usePriorities(mode) {
     addCustom: (text) =>
       update((m) => (m.custom.includes(text) ? m : { ...m, custom: [...m.custom, text].slice(0, MAX_CUSTOM) })),
     removeCustom: (text) => update((m) => ({ ...m, custom: m.custom.filter((c) => c !== text) })),
+    // Puts back a saved set of priorities (for Cancel).
+    replace: (snapshot) => update(() => snapshot),
   };
 }
 

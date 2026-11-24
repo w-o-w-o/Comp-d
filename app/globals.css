@@ -1380,6 +1380,105 @@ h3 {
   justify-content: space-between;
 }
 
+.ai-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-minimize {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ai-minimize:hover {
+  background: var(--bg-alt);
+}
+
+/* Minimized AI panel: just a small bubble */
+.ai-panel-collapsed {
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.ai-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 9px 16px 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.ai-bubble:hover {
+  border-color: var(--accent);
+}
+
+.ai-bubble-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+
+.ai-bubble-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-section-collapsed .ai-bubble {
+  box-shadow: none;
+}
+
+.ai-panel-collapsed .ai-bubble {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.ai-cancel {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.ai-cancel:hover {
+  background: var(--bg-alt);
+}
+
 .ai-badge {
   padding: 2px 8px;
   border-radius: 999px;

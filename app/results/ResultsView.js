@@ -15,7 +15,7 @@ import {
 } from "@vis.gl/react-google-maps";
 import HomePhoto from "./HomePhoto";
 import useComparables from "./useComparables";
-import AiRecommendation, { UpgradeButton, useRecommendation } from "./AiRecommendation";
+import AiRecommendation, { UpgradeButton, useAiCollapsed, useRecommendation } from "./AiRecommendation";
 import AreaInsights, { useArea } from "./AreaInsights";
 import CommuteBox, { formatCommute, useCommute } from "./Commute";
 import { useNearbyPlaces } from "./NearbyPlaces";
@@ -133,6 +133,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
   const nearby = useNearbyPlaces(resultsPosition);
   const priorities = usePriorities(mode);
   const wide = useIsWide();
+  const [aiCollapsed, setAiCollapsed] = useAiCollapsed();
   const ai = useRecommendation({
     position: resultsPosition,
     address: ready ? lookup.formattedAddress : null,
@@ -209,6 +210,8 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
       canRun={comps.status === "ready" && shown.length > 0}
       priorities={priorities}
       prefsCtx={{ estimate: estimateAmount, radiusMiles }}
+      collapsed={aiCollapsed}
+      onCollapse={setAiCollapsed}
     />
   );
   const modeControls = <ModeToggle mode={mode} onChange={pickMode} />;
@@ -380,7 +383,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
       )}
 
       {ready && stage === "results" && wide && (
-        <aside className="ai-panel" aria-label="AI recommendation">
+        <aside className={aiCollapsed ? "ai-panel ai-panel-collapsed" : "ai-panel"} aria-label="AI recommendation">
           {aiSection}
         </aside>
       )}
@@ -616,7 +619,7 @@ function mostCommonZip(listings) {
 function ListingCard({ listing: l, mode, commute, compact = false }) {
   const commuteText =
     commute?.status === "ready"
-      ? formatCommute(commute.byListing[l.id], commute.travelMode)
+      ? formatCommute(commute.byListing[l.id], commute.travelMode, commute.milesByListing?.[l.id])
       : null;
   const details = [
     l.type,

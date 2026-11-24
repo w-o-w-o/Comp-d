@@ -32,24 +32,35 @@ export function useCommute({ subject, listings }) {
         origins: [subject, ...included.map((l) => ({ lat: l.lat, lng: l.lng }))],
         destinations: [destination.trim()],
         travelMode,
-        fields: ["durationMillis", "condition"],
+        fields: ["durationMillis", "distanceMeters", "condition"],
       });
-      const minutes = (row) => {
+      const route = (row) => {
         const item = row?.items?.[0];
-        return item?.condition === "ROUTE_EXISTS" && Number.isFinite(item.durationMillis)
-          ? Math.round(item.durationMillis / 60000)
-          : null;
+        return item?.condition === "ROUTE_EXISTS" ? item : null;
+      };
+      const minutes = (row) => {
+        const item = route(row);
+        return item && Number.isFinite(item.durationMillis) ? Math.round(item.durationMillis / 60000) : null;
+      };
+      // Route distance (not straight-line), to one decimal place.
+      const miles = (row) => {
+        const item = route(row);
+        return item && Number.isFinite(item.distanceMeters) ? Math.round(item.distanceMeters / 160.934) / 10 : null;
       };
       const byListing = {};
+      const milesByListing = {};
       included.forEach((l, i) => {
         byListing[l.id] = minutes(matrix.rows[i + 1]);
+        milesByListing[l.id] = miles(matrix.rows[i + 1]);
       });
       setState({
         status: "ready",
         destination: destination.trim(),
         travelMode,
         subjectMinutes: minutes(matrix.rows[0]),
+        subjectMiles: miles(matrix.rows[0]),
         byListing,
+        milesByListing,
       });
     } catch (err) {
       console.error("Commute calculation failed:", err);
@@ -65,11 +76,12 @@ export function useCommute({ subject, listings }) {
   return { ...state, compute, available: Boolean(routes) };
 }
 
-export function formatCommute(minutes, travelMode) {
+// "12 min drive · 4.3 mi"; miles are the route's length, when known.
+export function formatCommute(minutes, travelMode, miles = null) {
   if (minutes == null) return null;
   const verb = { DRIVING: "drive", TRANSIT: "by transit", BICYCLING: "bike", WALKING: "walk" }[travelMode];
   const time = minutes >= 60 ? `${Math.floor(minutes / 60)} hr ${minutes % 60} min` : `${minutes} min`;
-  return `${time} ${verb}`;
+  return `${time} ${verb}${miles != null ? ` · ${miles} mi` : ""}`;
 }
 
 export default function CommuteBox({ commute }) {
@@ -83,7 +95,7 @@ export default function CommuteBox({ commute }) {
 
   const peek =
     commute.status === "ready"
-      ? formatCommute(commute.subjectMinutes, commute.travelMode) || "No route"
+      ? formatCommute(commute.subjectMinutes, commute.travelMode, commute.subjectMiles) || "No route"
       : "Add a destination";
   return (
     <div className="panel-section panel-section-tight">
@@ -123,7 +135,7 @@ export default function CommuteBox({ commute }) {
         <p className="panel-muted">
           From this property:{" "}
           <strong>
-            {formatCommute(commute.subjectMinutes, commute.travelMode) || "no route found"}
+            {formatCommute(commute.subjectMinutes, commute.travelMode, commute.subjectMiles) || "no route found"}
           </strong>{" "}
           to {commute.destination}. Times also show on each listing.
         </p>

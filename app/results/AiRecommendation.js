@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatFacts, formatMiles, formatPrice } from "./format";
 import AiPreferences from "./AiPreferences";
 
@@ -22,9 +22,11 @@ export function useRecommendation({ position, address, mode, radiusMiles, commut
   const [state, setState] = useState({ status: "idle" });
   const commuteKey = commute ? `${commute.destination}|${commute.travelMode}` : "";
   const filterKey = filters ? `${filters.beds.join(",")}/${filters.types.join(",")}` : "";
-  const searchKey = position
-    ? `${mode}|${radiusMiles.toFixed(2)}|${position.lat},${position.lng}|${commuteKey}|${filterKey}|${JSON.stringify(priorities)}`
-    : null;
+  const keyFor = (p) =>
+    position
+      ? `${mode}|${radiusMiles.toFixed(2)}|${position.lat},${position.lng}|${commuteKey}|${filterKey}|${JSON.stringify(p)}`
+      : null;
+  const searchKey = keyFor(priorities);
 
   async function run() {
     const forKey = searchKey;
@@ -59,23 +61,94 @@ export function useRecommendation({ position, address, mode, radiusMiles, commut
   const stale = state.status !== "idle" && state.forKey !== searchKey;
   const picks =
     state.status === "ready" && !stale ? state.data.recommendations.map((r) => r.listingId) : [];
-  return { ...state, stale, picks, run };
+  // Would these priorities bring back the last analysis (everything else
+  // unchanged)?
+  const matchesLast = (p) => state.status !== "idle" && state.forKey === keyFor(p);
+  return { ...state, stale, picks, run, matchesLast };
 }
 
-export default function AiRecommendation({ ai, listingsById, mode, onSelect, canRun, priorities, prefsCtx }) {
+// Whether the AI panel is minimized to a bubble, remembered in this browser.
+const COLLAPSED_KEY = "compd-ai-collapsed";
+export function useAiCollapsed() {
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(COLLAPSED_KEY) === "1");
+    } catch {}
+  }, []);
+  function set(value) {
+    setCollapsed(value);
+    try {
+      window.localStorage.setItem(COLLAPSED_KEY, value ? "1" : "0");
+    } catch {}
+  }
+  return [collapsed, set];
+}
+
+export default function AiRecommendation({
+  ai,
+  listingsById,
+  mode,
+  onSelect,
+  canRun,
+  priorities,
+  prefsCtx,
+  collapsed,
+  onCollapse,
+}) {
   const hasResult = ai.status !== "idle";
   // Once there's a result, the priorities fold away behind a button.
   const [prefsOpen, setPrefsOpen] = useState(false);
+  // The priorities the last analysis used, so Cancel can bring them back.
+  const [ranWith, setRanWith] = useState(null);
   const showPrefs = !hasResult || prefsOpen;
   const selectedCount = priorities.payload
     ? priorities.payload.items.length + priorities.payload.custom.length
     : 0;
+  const canCancel = ai.stale && ranWith && ai.matchesLast(ranWith.payload);
+
+  function run() {
+    setPrefsOpen(false);
+    setRanWith({ current: priorities.current, payload: priorities.payload });
+    ai.run();
+  }
+
+  function cancel() {
+    priorities.replace(ranWith.current);
+    setPrefsOpen(false);
+  }
+
+  if (collapsed) {
+    return (
+      <div className="panel-section ai-section ai-section-collapsed">
+        <button type="button" className="ai-bubble" onClick={() => onCollapse(false)} aria-expanded="false">
+          <span className="ai-bubble-icon" aria-hidden="true">
+            ✦
+          </span>
+          <span className="ai-bubble-text">
+            <strong>AI</strong> · {bubbleStatus(ai)}
+          </span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="panel-section ai-section">
       <div className="ai-head">
         <h2>AI recommendation</h2>
-        <span className="ai-badge">Claude</span>
+        <span className="ai-head-right">
+          <span className="ai-badge">Claude</span>
+          <button
+            type="button"
+            className="ai-minimize"
+            onClick={() => onCollapse(true)}
+            aria-label="Minimize the AI panel"
+            title="Minimize"
+          >
+            –
+          </button>
+        </span>
       </div>
 
       {!hasResult && (
@@ -100,17 +173,14 @@ export default function AiRecommendation({ ai, listingsById, mode, onSelect, can
               Your priorities, radius, rent/buy choice, filters, or commute changed since the last analysis.
             </p>
           )}
-          <button
-            type="button"
-            className="btn ai-run"
-            onClick={() => {
-              setPrefsOpen(false);
-              ai.run();
-            }}
-            disabled={!canRun}
-          >
+          <button type="button" className="btn ai-run" onClick={run} disabled={!canRun}>
             {ai.stale ? "Re-analyze" : "Analyze with AI"}
           </button>
+          {canCancel && (
+            <button type="button" className="ai-cancel" onClick={cancel}>
+              Cancel and go back to the last analysis
+            </button>
+          )}
         </>
       )}
 
@@ -126,7 +196,7 @@ export default function AiRecommendation({ ai, listingsById, mode, onSelect, can
           {ai.upgradeTo ? (
             <UpgradeButton tier={ai.upgradeTo} />
           ) : (
-            <button type="button" className="chip" onClick={ai.run}>
+            <button type="button" className="chip" onClick={run}>
               Try again
             </button>
           )}
@@ -138,6 +208,16 @@ export default function AiRecommendation({ ai, listingsById, mode, onSelect, can
       )}
     </div>
   );
+}
+
+// One-line status for the minimized bubble.
+function bubbleStatus(ai) {
+  if (ai.status === "idle") return "Analyze this property";
+  if (ai.stale) return "Out of date";
+  if (ai.status === "loading") return "Analyzing…";
+  if (ai.status === "error") return "Couldn't analyze";
+  const n = ai.data.recommendations.length;
+  return `${RATING_LABELS[ai.data.verdict.rating]} · ${n} ${n === 1 ? "pick" : "picks"}`;
 }
 
 function DetailList({ title, items, muted = false }) {
