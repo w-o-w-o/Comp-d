@@ -6,6 +6,7 @@ import { loadComps } from "../../../lib/comps";
 import { AiLimitError, MAX_LISTINGS, recommend } from "../../../lib/recommend";
 import { areaProfile, floodZones, schoolDistances, walkabilities } from "../../../lib/area";
 import { getUserPlan } from "../../../lib/plans";
+import { parseNearby } from "../../../lib/nearby";
 import { distanceMiles, fetchRadiusFor } from "../../results/geo";
 import { matchesFilters, medianPricePerSqft, parseFilters } from "../../results/quality";
 import {
@@ -40,24 +41,6 @@ function parseCommute(c) {
   };
 }
 
-// Nearby-place counts looked up in the browser (Google Places), checked for shape.
-const NEARBY_COUNTS = [
-  "groceriesWithinHalfMile",
-  "parksWithinHalfMile",
-  "restaurantsAndCafesWithinHalfMile",
-  "transitStopsWithinQuarterMile",
-];
-function parseNearby(n) {
-  if (!n || typeof n !== "object") return null;
-  const out = {};
-  for (const k of NEARBY_COUNTS) {
-    if (!Number.isInteger(n[k]) || n[k] < 0 || n[k] > 20) return null;
-    out[k] = n[k];
-  }
-  const g = n.nearestGroceryMiles;
-  out.nearestGroceryMiles = Number.isFinite(g) && g >= 0 && g <= 5 ? Math.round(g * 100) / 100 : null;
-  return out;
-}
 
 // POST /api/recommend { lat, lng, radiusMiles, mode, address, commute?, nearby? }
 // The server rebuilds the listing and area data itself (from caches) rather

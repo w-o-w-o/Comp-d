@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
+import { PLACE_FIELDS, rememberPlace } from "../maps/placeLookup";
 
 // Address search box. When Google Maps is available, it suggests real
 // addresses as the user types (Places API autocomplete).
@@ -56,7 +57,7 @@ export default function SearchBar({ initialAddress = "", autoFocus = true }) {
     router.push(`/results?${params}`);
   }
 
-  function choose(suggestion) {
+  async function choose(suggestion) {
     const prediction = suggestion.placePrediction;
     const text = prediction.text.toString();
     sessionToken.current = null;
@@ -64,6 +65,19 @@ export default function SearchBar({ initialAddress = "", autoFocus = true }) {
     setAddress(text);
     setSuggestions([]);
     setOpen(false);
+    // Looking the place up through the prediction ends Google's autocomplete
+    // session, which makes the 13th and later suggestion requests free. The
+    // results page needs this lookup anyway, so it's handed over instead of
+    // repeated (a slow answer just means the results page looks it up itself).
+    try {
+      const place = prediction.toPlace();
+      await Promise.race([
+        place.fetchFields({ fields: PLACE_FIELDS }).then(() => rememberPlace(place)),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ]);
+    } catch (err) {
+      console.error("Place lookup failed:", err);
+    }
     goToResults(text, prediction.placeId);
   }
 

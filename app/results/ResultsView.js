@@ -14,6 +14,7 @@ import {
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import HomePhoto from "./HomePhoto";
+import { PLACE_FIELDS, recallPlace, rememberPlace } from "../maps/placeLookup";
 import useComparables from "./useComparables";
 import AiRecommendation, { UpgradeButton, useAiCollapsed, useRecommendation } from "./AiRecommendation";
 import AreaInsights, { useArea } from "./AreaInsights";
@@ -65,7 +66,13 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
 
     (async () => {
       try {
-        const fields = ["formattedAddress", "location"];
+        // Already looked up when the address was picked from the suggestions.
+        const remembered = recallPlace(placeId);
+        if (remembered) {
+          if (!cancelled) setLookup({ status: "ready", ...remembered });
+          return;
+        }
+        const fields = PLACE_FIELDS;
         let place;
         if (placeId) {
           place = new places.Place({ id: placeId });
@@ -79,6 +86,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
           place = found[0];
         }
         if (!place?.location) throw new Error("Address not found");
+        if (placeId) rememberPlace(place);
         if (!cancelled) {
           setLookup({
             status: "ready",

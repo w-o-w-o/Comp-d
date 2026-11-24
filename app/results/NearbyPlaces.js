@@ -58,6 +58,8 @@ async function lookUp(placesLib, center) {
 
 // Groceries, parks, restaurants/cafes and transit stops around one point,
 // from Google Places (runs in the browser with the same key as the map).
+// Each result is saved on the server (lib/nearby.js), so reopening a search
+// doesn't repeat the 4 paid lookups.
 export function useNearbyPlaces(position) {
   const placesLib = useMapsLibrary("places");
   const [state, setState] = useState({ status: "idle" });
@@ -71,15 +73,27 @@ export function useNearbyPlaces(position) {
     }
     let cancelled = false;
     setState({ status: "loading" });
-    lookUp(placesLib, { lat: position.lat, lng: position.lng })
-      .then((data) => {
-        memory.set(key, data);
-        if (!cancelled) setState({ status: "ready", data });
-      })
-      .catch((err) => {
-        console.error("Nearby places lookup failed:", err);
-        if (!cancelled) setState({ status: "error" });
-      });
+    const { lat, lng } = position;
+    (async () => {
+      // Saved from an earlier visit? Then no Google requests are needed.
+      const saved = await fetch(`/api/nearby?${new URLSearchParams({ lat: String(lat), lng: String(lng) })}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      let data = saved?.data;
+      if (!data) {
+        data = await lookUp(placesLib, { lat, lng });
+        fetch("/api/nearby", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lat, lng, data }),
+        }).catch(() => {});
+      }
+      memory.set(key, data);
+      if (!cancelled) setState({ status: "ready", data });
+    })().catch((err) => {
+      console.error("Nearby places lookup failed:", err);
+      if (!cancelled) setState({ status: "error" });
+    });
     return () => {
       cancelled = true;
     };
