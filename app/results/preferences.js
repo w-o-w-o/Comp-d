@@ -4,6 +4,20 @@
 const money = (n) => `$${Math.round(n).toLocaleString("en-US")}`;
 const shortMoney = (n) => (n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2).replace(/\.?0+$/, "")}M` : n >= 10_000 ? `$${Math.round(n / 1000)}k` : money(n));
 
+// Index = the "Near schools" level value.
+const SCHOOL_LEVEL_OPTIONS = [
+  { key: "any", label: "Any", short: "A school" },
+  { key: "elementary", label: "Elementary", short: "Elementary school" },
+  { key: "middle", label: "Middle", short: "Middle school" },
+  { key: "high", label: "High", short: "High school" },
+];
+
+// EPA Walkability Index bands (values are the lower bound of each band).
+const WALK_OPTIONS = [
+  { value: 10.5, label: "Above average" },
+  { value: 15.25, label: "Most walkable" },
+];
+
 export const MAX_CUSTOM = 5;
 export const MAX_CUSTOM_LENGTH = 80;
 
@@ -127,6 +141,51 @@ export const PREFERENCES = [
     check: (l) => (l.floodRisk == null || l.floodRisk === "undetermined" ? null : l.floodRisk !== "high"),
   },
   {
+    id: "schools",
+    label: "Near schools",
+    modes: ["rent", "buy"],
+    hint: "Distance from each home to the nearest public school (federal NCES data). The assigned school can differ, and there are no quality ratings.",
+    controls: [
+      {
+        key: "level",
+        type: "select",
+        min: 0,
+        max: 3,
+        step: 1,
+        label: "School",
+        options: SCHOOL_LEVEL_OPTIONS.map((o, i) => ({ value: i, label: o.label })),
+      },
+      { key: "miles", type: "range", min: 0.25, max: 3, step: 0.25, label: "Within", format: (v) => `${v} mi` },
+    ],
+    defaultValue: () => ({ level: 1, miles: 1 }),
+    summary: (v) => `${SCHOOL_LEVEL_OPTIONS[v.level].short} within ${v.miles} mi`,
+    check: (l, v) => {
+      const d = l.schoolMiles?.[SCHOOL_LEVEL_OPTIONS[v.level].key];
+      return d == null ? null : d <= v.miles;
+    },
+  },
+  {
+    id: "walkable",
+    label: "Walkable",
+    modes: ["rent", "buy"],
+    hint: "EPA Walkability Index (1–20) for each home's neighborhood: street layout, nearby shops and transit.",
+    control: () => ({
+      type: "select",
+      label: "At least",
+      options: WALK_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+    }),
+    defaultValue: () => WALK_OPTIONS[0].value,
+    summary: (v) => `${WALK_OPTIONS.find((o) => o.value === v)?.label || "Walkable"} or better`,
+    check: (l, v) => (l.walkScore == null ? null : l.walkScore >= v),
+  },
+  {
+    id: "crime",
+    label: "Lower crime",
+    modes: ["rent", "buy"],
+    hint: "FBI crime rates cover a whole city or township, so this weighs the area against state and U.S. rates. It can't tell homes in the same city apart.",
+    summary: () => "Below-average reported crime",
+  },
+  {
     id: "fresh",
     label: "Newly listed",
     modes: ["rent", "buy"],
@@ -141,9 +200,22 @@ export const PREFERENCES = [
   },
   {
     id: "value",
-    label: "Best value per sq ft",
+    label: "Value per sq ft",
     modes: ["rent", "buy"],
-    summary: () => "Lowest price for the space",
+    hint: "Compares each home's price per square foot with the median of the homes you're seeing. Homes without a listed size count as unknown.",
+    control: () => ({
+      type: "select",
+      label: "Price per sq ft",
+      options: [
+        { value: 100, label: "At or below median" },
+        { value: 90, label: "10% below" },
+        { value: 80, label: "20% below" },
+      ],
+    }),
+    defaultValue: () => 100,
+    summary: (v) => (v === 100 ? "$/sq ft at or below median" : `$/sq ft ${100 - v}% below median`),
+    check: (l, v, { medianPpsf }) =>
+      !medianPpsf || !l.sqft || !l.price ? null : l.price / l.sqft <= (medianPpsf * v) / 100,
   },
 ];
 

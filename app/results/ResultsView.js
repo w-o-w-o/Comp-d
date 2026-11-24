@@ -150,7 +150,6 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
     address: ready ? lookup.formattedAddress : null,
     radiusMiles,
     fallbackZip: mostCommonZip(comps.nearby),
-    mode,
   });
   // globalThis.Map: the built-in Map, since `Map` here is the Google map component.
   const listingsById = new globalThis.Map(comps.nearby.map((l) => [l.id, l]));
@@ -683,14 +682,20 @@ function ListingCard({ listing: l, mode, commute, compact = false }) {
             >
               Find this listing ↗
             </a>
-            <a
-              className="home-card-link"
-              href={`https://www.zillow.com/homes/${encodeURIComponent(l.address)}_rb/`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Zillow ↗
-            </a>
+            {/* Only for MLS listings: those are fed to Zillow, so Zillow's
+                address lookup lands on the home's own page. Others (most
+                rentals) often have no Zillow page, and Zillow would show a
+                different home instead. */}
+            {l.onMls && (
+              <a
+                className="home-card-link"
+                href={`https://www.zillow.com/homes/${encodeURIComponent(l.address)}_rb/`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Zillow ↗
+              </a>
+            )}
           </div>
         )}
       </div>

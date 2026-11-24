@@ -4,10 +4,10 @@ import { sql } from "../../../lib/db";
 import { BudgetError } from "../../../lib/rentcast";
 import { loadComps } from "../../../lib/comps";
 import { AiLimitError, MAX_LISTINGS, recommend } from "../../../lib/recommend";
-import { areaProfile, floodZones } from "../../../lib/area";
+import { areaProfile, floodZones, schoolDistances, walkabilities } from "../../../lib/area";
 import { getUserPlan } from "../../../lib/plans";
 import { distanceMiles, fetchRadiusFor } from "../../results/geo";
-import { matchesFilters, parseFilters } from "../../results/quality";
+import { matchesFilters, medianPricePerSqft, parseFilters } from "../../results/quality";
 import {
   checkListing,
   describePreferences,
@@ -18,7 +18,11 @@ import {
 // Area lookups plus the AI call can take a while.
 export const maxDuration = 90;
 
-const TRAVEL_MODES = ["DRIVING", "TRANSIT", "BICYCLING", "WALKING"];
+// With a "Walkable" priority, how many of the nearest homes get their own
+// walkability lookup before picking which homes the AI sees.
+const WALK_CHECK_LIMIT = 100;
+
+const TRAVEL_MODES =["DRIVING", "TRANSIT", "BICYCLING", "WALKING"];
 
 // Commute times computed in the browser (Google Routes), checked for shape.
 function parseCommute(c) {
@@ -124,8 +128,26 @@ export async function POST(request) {
     }
 
     const commute = parseCommute(body.commute);
-    const ctx = { radiusMiles, commute };
+    const median = medianPricePerSqft(nearby);
+    const ctx = { radiusMiles, commute, medianPpsf: median?.median ?? null };
     const priorities = parsePreferences(body.priorities, mode, ctx);
+    const wants = (id) => priorities?.items.some((p) => p.id === id);
+
+    // Public area data for the subject (also lists the schools around it).
+    const profile = await areaProfile({ lat, lng, address, listingZips: nearby.slice(0, MAX_LISTINGS).map((l) => l.zip) });
+
+    // Per-home facts the priorities check: distance to schools (computed
+    // here), and walkability (one EPA lookup per spot, so only for the
+    // nearest homes, and only when the user asked for it).
+    let withFacts = nearby.map((l) => ({
+      ...l,
+      schoolMiles: schoolDistances(l, position, profile.schools),
+    }));
+    if (wants("walkable")) {
+      const head = withFacts.slice(0, WALK_CHECK_LIMIT);
+      const scores = await walkabilities(head);
+      withFacts = [...head.map((l, i) => ({ ...l, walkScore: scores[i]?.score ?? null })), ...withFacts.slice(WALK_CHECK_LIMIT)];
+    }
 
     // The AI sees at most MAX_LISTINGS homes. With must-haves, send the ones
     // that meet them first (then nearest), so a strict budget doesn't leave the
@@ -135,18 +157,20 @@ export async function POST(request) {
       custom: [],
     };
     const mustMisses = (l) => (mustHaves?.items.length ? checkListing(l, mustHaves, mode, ctx).misses.length : 0);
-    const considered = nearby
+    const considered = withFacts
       .map((l) => ({ l, misses: mustMisses(l) }))
       .sort((a, b) => a.misses - b.misses || a.l.distance - b.l.distance)
       .slice(0, MAX_LISTINGS)
       .map(({ l }) => l);
 
-    // Public area data, plus the flood zone of each listing the AI sees.
-    const [profile, floods] = await Promise.all([
-      areaProfile({ lat, lng, address, listingZips: considered.map((l) => l.zip), mode }),
+    // The flood zone and walkability of each listing the AI sees.
+    const [floods, walks] = await Promise.all([
       floodZones(considered),
+      walkabilities(considered.filter((l) => l.walkScore === undefined)),
     ]);
-    const area = { ...profile, amenities: parseNearby(body.nearby) };
+    let w = 0;
+    for (const l of considered) if (l.walkScore === undefined) l.walkScore = walks[w++]?.score ?? null;
+    const area = { ...profile, amenities: parseNearby(body.nearby), typicalPricePerSqft: median?.median ?? null };
 
     // Check each listing against the user's priorities here, so the AI gets
     // exact answers instead of doing the arithmetic itself.

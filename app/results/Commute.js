@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
+import Collapsible from "./Collapsible";
 
 // Listings included in one commute calculation (Google allows up to 100
 // origin-destination pairs per request for transit).
@@ -80,9 +81,13 @@ export default function CommuteBox({ commute }) {
     commute.compute(destination, travelMode);
   }
 
+  const peek =
+    commute.status === "ready"
+      ? formatCommute(commute.subjectMinutes, commute.travelMode) || "No route"
+      : "Add a destination";
   return (
-    <div className="panel-section">
-      <h2>Commute</h2>
+    <div className="panel-section panel-section-tight">
+      <Collapsible title="Commute" peek={peek}>
       <form className="commute-form" onSubmit={submit}>
         <input
           type="text"
@@ -124,6 +129,7 @@ export default function CommuteBox({ commute }) {
         </p>
       )}
       {commute.status === "error" && <p className="panel-error">{commute.message}</p>}
+      </Collapsible>
     </div>
   );
 }

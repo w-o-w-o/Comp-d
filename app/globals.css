@@ -1220,13 +1220,86 @@ h3 {
 }
 
 /* Schools, walkability, crime (buying) */
-.buyer-facts {
-  margin-top: 14px;
+/* Sections that start closed (About this area, Commute, AI details) */
+.collapsible-list {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
 }
 
-.buyer-facts h3 {
-  margin: 0 0 6px;
-  font-size: 0.9rem;
+.collapsible {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.collapsible > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible > summary::before {
+  content: "▸";
+  color: var(--muted);
+  font-size: 0.8rem;
+  transition: transform 0.15s;
+}
+
+.collapsible[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.collapsible > summary:hover {
+  background: var(--bg-alt);
+  border-radius: 10px;
+}
+
+.collapsible-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.collapsible-peek {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.collapsible-peek-warn {
+  color: #d9534f;
+  font-weight: 600;
+}
+
+.collapsible-body {
+  padding: 0 12px 12px;
+}
+
+.collapsible-body > .area-facts:first-child {
+  margin-top: 0;
+}
+
+.panel-section-tight > .collapsible {
+  margin-top: 0;
 }
 
 .school-list {
@@ -1435,8 +1508,29 @@ h3 {
   font-style: italic;
 }
 
-.ai-caveats {
-  font-size: 0.82rem;
+.ai-details {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.ai-detail h4 {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+}
+
+.ai-detail ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 0.86rem;
+}
+
+.ai-detail li + li {
+  margin-top: 3px;
+}
+
+.ai-detail-muted ul {
+  color: var(--muted);
 }
 
 /* Listing price pins on the map */

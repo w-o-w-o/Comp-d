@@ -9,7 +9,19 @@ const EMPTY = { rent: { items: {}, custom: [] }, buy: { items: {}, custom: [] } 
 function load() {
   try {
     const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY));
-    if (saved?.rent && saved?.buy) return saved;
+    if (saved?.rent && saved?.buy) {
+      // A priority that gained a setting after it was saved gets its default.
+      for (const mode of ["rent", "buy"]) {
+        for (const [id, entry] of Object.entries(saved[mode].items || {})) {
+          const def = PREFERENCE_BY_ID[id];
+          if (!def) delete saved[mode].items[id];
+          else if ((def.control || def.controls) && entry.value == null && def.defaultValue) {
+            entry.value = def.defaultValue(mode, {});
+          }
+        }
+      }
+      return saved;
+    }
   } catch {}
   return EMPTY;
 }

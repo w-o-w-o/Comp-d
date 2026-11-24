@@ -31,8 +31,6 @@ export async function GET(request) {
     lat,
     lng,
     address,
-    listingZips: fallbackZip ? [fallbackZip] : [],
-    mode: params.get("mode") === "buy" ? "buy" : "rent",
-  });
+    listingZips: fallbackZip ? [fallbackZip] : [],  });
   return Response.json(profile);
 }

@@ -140,6 +140,20 @@ export default function AiRecommendation({ ai, listingsById, mode, onSelect, can
   );
 }
 
+function DetailList({ title, items, muted = false }) {
+  if (!items?.length) return null;
+  return (
+    <div className={muted ? "ai-detail ai-detail-muted" : "ai-detail"}>
+      <h4>{title}</h4>
+      <ul>
+        {items.map((item, i) => (
+          <li key={i}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // Plain <a>: checkout is a server redirect to Stripe, not a page.
 export function UpgradeButton({ tier }) {
   const label = tier === "advanced" ? "Upgrade to Advanced — $20/mo" : "Upgrade to Basic — $10/mo";
@@ -155,33 +169,13 @@ function AiResult({ result, listingsById, mode, onSelect }) {
 
   return (
     <div className="ai-result">
+      {/* 1. Summary */}
       <div className={`ai-verdict ai-verdict-${verdict.rating.replace(/\s+/g, "-")}`}>
         <span className="ai-verdict-label">This property: {RATING_LABELS[verdict.rating]}</span>
         <p>{verdict.summary}</p>
-        {verdict.factors.length > 0 && (
-          <ul>
-            {verdict.factors.map((f) => (
-              <li key={f}>{f}</li>
-            ))}
-          </ul>
-        )}
       </div>
 
-      {marketContext && <p className="ai-market">{marketContext}</p>}
-
-      {priorityNotes.length > 0 && (
-        <div className="ai-priority-notes">
-          <h3 className="ai-picks-title">Your priorities</h3>
-          <ul>
-            {priorityNotes.map((n) => (
-              <li key={n.priority}>
-                <strong>{n.priority}:</strong> {n.note}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
+      {/* 2. Recommended homes */}
       <h3 className="ai-picks-title">
         {recommendations.length > 0
           ? `${recommendations.length} possibly better ${recommendations.length === 1 ? "deal" : "deals"}`
@@ -213,9 +207,21 @@ function AiResult({ result, listingsById, mode, onSelect }) {
         })}
       </ol>
 
-      {caveats.length > 0 && (
-        <p className="panel-muted ai-caveats">Note: {caveats.join(" ")}</p>
-      )}
+      {/* 3. The details behind the verdict */}
+      <div className="ai-details">
+        <h3 className="ai-picks-title">Details</h3>
+        <DetailList title="About this property" items={verdict.factors} />
+        <DetailList title="Market" items={marketContext ? [marketContext] : []} />
+        <DetailList
+          title="Your priorities"
+          items={priorityNotes.map((n) => (
+            <>
+              <strong>{n.priority}:</strong> {n.note}
+            </>
+          ))}
+        />
+        <DetailList title="Keep in mind" items={caveats} muted />
+      </div>
       <p className="panel-credit">
         AI-generated from listing data — a starting point, not financial advice.
       </p>
