@@ -128,7 +128,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
 
   const selected = comps.nearby.find((l) => l.id === selectedId) || null;
   const resultsPosition = ready && stage === "results" ? lookup.position : null;
-  const commute = useCommute({ subject: resultsPosition, listings: shown });
+  const commute = useCommute({ subject: resultsPosition, listings: shown, mode });
   const commuteForAi =
     commute.status === "ready"
       ? {

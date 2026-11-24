@@ -968,6 +968,71 @@ h3 {
   flex-wrap: wrap;
 }
 
+/* Up to 3 saved commute checks under the commute search */
+.commute-saved {
+  margin-top: 12px;
+}
+
+.commute-saved-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.commute-count-full {
+  color: #d9534f;
+  font-weight: 600;
+}
+
+.commute-saved-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.commute-saved-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-alt);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.commute-saved-item:hover {
+  border-color: var(--accent);
+}
+
+.commute-saved-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.commute-saved-dest {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.commute-saved-time {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .commute-row .mode-toggle {
   flex-wrap: wrap;
   gap: 6px;
