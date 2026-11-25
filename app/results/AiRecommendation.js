@@ -329,7 +329,11 @@ function AnalysisCostNote({ access }) {
   } else if (access.usage?.credits && access.usage.credits.max > access.usage.credits.used) {
     // Basic: re-analyses come out of the plan's credits.
     const c = access.usage.credits;
-    text = `Re-analyses use 1 credit: ${c.max - c.used} of ${c.max} left. Reopening one you've already run is free.`;
+    const left = c.max - c.used;
+    text =
+      left === 1
+        ? "Your next re-analysis uses your last credit. Reopening one you've already run is free."
+        : `Re-analyses use 2 credits: ${left} of ${c.max} left. Reopening one you've already run is free.`;
   } else if (access.tab) {
     const closes = new Date(access.tab.closesAt).toLocaleString("en-US", {
       weekday: "short",

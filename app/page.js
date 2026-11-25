@@ -129,10 +129,10 @@ const plans = [
     features: [
       `${PLANS.basic.creditsPer30Days} credits a month, spent however you like`,
       `A search uses ${CREDIT_COST.search} credits and includes its first AI analysis`,
-      `A re-analysis uses ${CREDIT_COST.reanalysis} credit`,
+      `A re-analysis uses ${CREDIT_COST.reanalysis} credits`,
       `${PLANS.basic.commutesPerSearch} commute checks per search`,
     ],
-    note: `That's up to ${PLANS.basic.creditsPer30Days / CREDIT_COST.search} searches, or fewer searches and more re-analyses: ${usd((PLANS.basic.creditsPer30Days * REANALYSIS_PRICE) / CREDIT_COST.reanalysis)} of pay-per-search value.`,
+    note: `That's up to ${PLANS.basic.creditsPer30Days / CREDIT_COST.search} searches (${usd(PLANS.basic.price / (PLANS.basic.creditsPer30Days / CREDIT_COST.search))} each instead of ${usd(SEARCH_PRICE)}), or a mix like 6 searches and 10 re-analyses.`,
     cta: `Get ${PLANS.basic.name}`,
     href: "/api/checkout?plan=basic",
     featured: true,

@@ -17,7 +17,7 @@ export function planUsageText(usage) {
     const next = c.max - c.used < 5 && c.nextFree ? ` More free up ${shortDate(c.nextFree)}.` : "";
     return (
       `${usage.plan} plan: ${part(c, "credits")} left. A search uses 5 (with its first AI analysis), ` +
-      `a re-analysis uses 1. Each frees up 30 days after you use it.${next}`
+      `a re-analysis uses 2. Each frees up 30 days after you use it.${next}`
     );
   }
   const parts = [part(usage.searches, "searches"), usage.ai && part(usage.ai, "AI analyses")].filter(Boolean);

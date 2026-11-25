@@ -124,7 +124,7 @@ export default async function AccountPage({ searchParams }) {
                 </ul>
                 <p className="panel-muted">
                   {usage.credits &&
-                    `A search uses ${CREDIT_COST.search} credits and includes its first AI analysis; each re-analysis uses ${CREDIT_COST.reanalysis}. `}
+                    `A search uses ${CREDIT_COST.search} credits and includes its first AI analysis; each re-analysis uses ${CREDIT_COST.reanalysis} (or your last one). `}
                   Counted over the last 30 days: each one frees up 30 days after you use it. Reopening a search
                   or analysis you&apos;ve already run is free. Past your plan, searches are{" "}
                   {formatCents(SEARCH_PRICE)} and re-analyses {formatCents(REANALYSIS_PRICE)}, on a{" "}
