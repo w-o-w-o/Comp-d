@@ -1828,12 +1828,27 @@ h3 {
   cursor: default;
 }
 
-.ai-loading::after {
-  content: "";
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-left: 8px;
+.ai-loading {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 10px;
+}
+
+.ai-loading p {
+  margin: 0;
+}
+
+.ai-loading .panel-muted {
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.ai-spinner {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
   border: 2px solid var(--accent);
   border-right-color: transparent;
   border-radius: 50%;
@@ -1932,6 +1947,91 @@ h3 {
   font-size: 0.82rem;
   color: var(--muted);
   font-style: italic;
+}
+
+/* Rental amenities the AI found on the web */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.amenities {
+  margin-top: 8px;
+}
+
+.ai-picks .amenities {
+  margin: 6px 4px 2px;
+}
+
+.amenity-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.amenity-chip {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.amenity-yes {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.amenity-no {
+  border-color: rgba(217, 83, 79, 0.5);
+  background: rgba(217, 83, 79, 0.08);
+  color: var(--text);
+}
+
+.amenity-unknown {
+  border-style: dashed;
+}
+
+.amenity-details {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.amenity-details summary {
+  cursor: pointer;
+}
+
+.amenity-details ul {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+
+.amenity-details li {
+  overflow-wrap: anywhere;
+}
+
+.amenity-none {
+  margin: 6px 4px 0;
+  font-size: 0.78rem;
+}
+
+.amenity-sources {
+  margin: 4px 0 0;
+}
+
+.amenity-sources a {
+  color: var(--accent);
 }
 
 .ai-details {

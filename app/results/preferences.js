@@ -18,6 +18,19 @@ const WALK_OPTIONS = [
   { value: 15.25, label: "Most walkable" },
 ];
 
+// Rental amenities aren't in the listing data: the AI looks them up on the web
+// during the analysis. Homes already looked up (saved for 7 days) can be
+// checked here; the rest count as unknown until the AI checks them.
+const AMENITY_HINT =
+  "Not in the listing data: the AI looks this up on listing and property-manager sites for the homes it considers. It can't always find it.";
+const amenityStatus = (l, key) => {
+  const s = l.amenities?.features?.[key]?.status;
+  return s === "yes" ? true : s === "no" ? false : null;
+};
+function amenityPreference(id, label, key, summary) {
+  return { id, label, modes: ["rent"], hint: AMENITY_HINT, summary: () => summary, check: (l) => amenityStatus(l, key) };
+}
+
 export const MAX_CUSTOM = 5;
 export const MAX_CUSTOM_LENGTH = 80;
 
@@ -82,6 +95,13 @@ export const PREFERENCES = [
     summary: (v) => `${v}+ baths`,
     check: (l, v) => (l.baths == null ? null : l.baths >= v),
   },
+  amenityPreference("laundry", "In-unit laundry", "laundry", "Washer and dryer in the unit"),
+  amenityPreference("ac", "Air conditioning", "airConditioning", "Air conditioning"),
+  amenityPreference("heat", "Heat included", "heatIncluded", "Heat included in rent"),
+  amenityPreference("water", "Water included", "waterIncluded", "Water included in rent"),
+  amenityPreference("internet", "Wi-Fi included", "internetIncluded", "Wi-Fi / internet included in rent"),
+  amenityPreference("parking", "Parking", "parking", "Parking for tenants"),
+  amenityPreference("pets", "Pets allowed", "pets", "Pets allowed"),
   {
     id: "newer",
     label: "Newer building",

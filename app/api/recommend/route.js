@@ -7,6 +7,8 @@ import { AiLimitError, MAX_LISTINGS, recommend } from "../../../lib/recommend";
 import { areaProfile, floodZones, schoolDistances, walkabilities } from "../../../lib/area";
 import { getUserPlan } from "../../../lib/plans";
 import { parseNearby } from "../../../lib/nearby";
+import { getSavedAmenities } from "../../../lib/amenities";
+import { addressKey } from "../../results/amenities";
 import { distanceMiles, fetchRadiusFor } from "../../results/geo";
 import { defaultFilters, matchesFilters, medianPricePerSqft, parseFilters } from "../../results/quality";
 import { claimAnalysis, ensureSearchAccess, PaymentRequired, searchKeyFor } from "../../../lib/access";
@@ -18,8 +20,9 @@ import {
   parsePreferences,
 } from "../../results/preferences";
 
-// Area lookups plus the AI call can take a while.
-export const maxDuration = 90;
+// Area lookups plus the AI call (with web research for rentals) can take a
+// few minutes.
+export const maxDuration = 300;
 
 // With a "Walkable" priority, how many of the nearest homes get their own
 // walkability lookup before picking which homes the AI sees.
@@ -125,9 +128,15 @@ export async function POST(request) {
     // Per-home facts the priorities check: distance to schools (computed
     // here), and walkability (one EPA lookup per spot, so only for the
     // nearest homes, and only when the user asked for it).
+    // Rental amenities already looked up on the web (saved for 7 days).
+    const savedAmenities =
+      mode === "rent" ? await getSavedAmenities([address, ...nearby.map((l) => l.address)]) : new Map();
+    const subjectAmenities = savedAmenities.get(addressKey(address)) || null;
+
     let withFacts = nearby.map((l) => ({
       ...l,
       schoolMiles: schoolDistances(l, position, profile.schools),
+      ...(savedAmenities.has(addressKey(l.address)) && { amenities: savedAmenities.get(addressKey(l.address)) }),
     }));
     if (wants("walkable")) {
       const head = withFacts.slice(0, WALK_CHECK_LIMIT);
@@ -204,6 +213,7 @@ export async function POST(request) {
       filters,
       priorities: describePreferences(priorities, mode),
       subjectExtras,
+      subjectAmenities,
       radiusMiles,
       userId,
       dailyLimit: access.fullAccess ? null : plan.aiPerDay,

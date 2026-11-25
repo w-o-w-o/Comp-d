@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { formatFacts, formatMiles, formatPrice } from "./format";
 import AiPreferences from "./AiPreferences";
 import PayButton from "./Payment";
+import { AMENITY_FEATURES, sourceName } from "./amenities";
 
 const RATING_LABELS = {
   "good deal": "Good deal",
@@ -247,11 +248,7 @@ export default function AiRecommendation({
         </>
       )}
 
-      {ai.status === "loading" && !ai.stale && (
-        <p className="panel-muted ai-loading">
-          Comparing homes in your radius… this can take up to a minute.
-        </p>
-      )}
+      {ai.status === "loading" && !ai.stale && <LoadingMessage mode={mode} />}
 
       {ai.status === "error" && !ai.stale && (
         <>
@@ -310,8 +307,99 @@ function AnalysisCostNote({ access }) {
   return text ? <p className="panel-muted pay-note">{text}</p> : null;
 }
 
+// Steps shown while the analysis runs. Rentals take longer: the AI also looks
+// up amenities on the web.
+const LOADING_STEPS = {
+  rent: [
+    "Comparing rents in your radius…",
+    "Picking the strongest candidates…",
+    "Searching listings for laundry, A/C and parking…",
+    "Checking which utilities are included…",
+    "Reading property manager pages…",
+    "Weighing what it found against your priorities…",
+    "Writing up the picks…",
+  ],
+  buy: ["Comparing homes in your radius…", "Checking prices per square foot…", "Weighing your priorities…", "Writing up the picks…"],
+};
+
+function LoadingMessage({ mode }) {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const steps = LOADING_STEPS[mode] || LOADING_STEPS.buy;
+  // Move on every 12 seconds, then stay on the last step.
+  const step = steps[Math.min(steps.length - 1, Math.floor(seconds / 12))];
+  return (
+    <div className="ai-loading" role="status">
+      <span className="ai-spinner" aria-hidden="true" />
+      <div>
+        <p>{step}</p>
+        <p className="panel-muted">
+          {mode === "rent"
+            ? "Rentals take 1–3 minutes: the AI checks listing pages for amenities."
+            : "This usually takes under a minute."}{" "}
+          {seconds >= 5 && `${seconds}s`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+const STATUS_MARK = { yes: "✓", no: "✗", unknown: "?" };
+
+// What the AI found on the web about one home's amenities: a row of chips,
+// and a collapsed list with each detail and the pages it came from.
+function AmenityList({ amenities }) {
+  if (!amenities?.features) return null;
+  const items = AMENITY_FEATURES.map((f) => ({ ...f, ...amenities.features[f.key] }));
+  const found = items.filter((f) => f.status !== "unknown");
+  if (!found.length) {
+    return <p className="panel-muted amenity-none">Laundry, utilities, parking and pets: not found online.</p>;
+  }
+  return (
+    <div className="amenities">
+      <ul className="amenity-chips">
+        {items.map((f) => (
+          <li key={f.key} className={`amenity-chip amenity-${f.status}`} title={f.detail || "Not found"}>
+            <span aria-hidden="true">{STATUS_MARK[f.status]}</span> {f.short}
+            <span className="sr-only">: {f.status === "unknown" ? "not found" : f.status}</span>
+          </li>
+        ))}
+      </ul>
+      <details className="amenity-details">
+        <summary>
+          Details and sources ({found.length} of {items.length} found)
+        </summary>
+        <ul>
+          {items.map((f) => (
+            <li key={f.key}>
+              <strong>{f.label}:</strong> {f.status === "unknown" ? "not found" : f.detail || f.status}
+            </li>
+          ))}
+        </ul>
+        {amenities.sources?.length > 0 && (
+          <p className="amenity-sources">
+            From{" "}
+            {amenities.sources.map((url, i) => (
+              <span key={url}>
+                {i > 0 && ", "}
+                <a href={url} target="_blank" rel="noopener noreferrer nofollow">
+                  {sourceName(url)}
+                </a>
+              </span>
+            ))}
+            . Check with the landlord before you sign.
+          </p>
+        )}
+      </details>
+    </div>
+  );
+}
+
 function AiResult({ result, listingsById, mode, onSelect }) {
-  const { verdict, marketContext, recommendations, caveats, priorityNotes = [] } = result;
+  const { verdict, marketContext, recommendations, caveats, priorityNotes = [], amenities } = result;
 
   return (
     <div className="ai-result">
@@ -319,6 +407,7 @@ function AiResult({ result, listingsById, mode, onSelect }) {
       <div className={`ai-verdict ai-verdict-${verdict.rating.replace(/\s+/g, "-")}`}>
         <span className="ai-verdict-label">This property: {RATING_LABELS[verdict.rating]}</span>
         <p>{verdict.summary}</p>
+        <AmenityList amenities={amenities?.subject} />
       </div>
 
       {/* 2. Recommended homes */}
@@ -348,6 +437,7 @@ function AiResult({ result, listingsById, mode, onSelect }) {
                 </ul>
                 {r.tradeoff && <span className="ai-tradeoff">Trade-off: {r.tradeoff}</span>}
               </button>
+              <AmenityList amenities={amenities?.byListing?.[r.listingId]} />
             </li>
           );
         })}
