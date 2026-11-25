@@ -9,16 +9,10 @@ import { planUsage } from "../../lib/access";
 import { savedCard } from "../../lib/payments";
 import { ensureTables, sql } from "../../lib/db";
 import { chargedTabs, tabSummary } from "../../lib/tabs";
-import { recentAnalyses } from "../../lib/analyses";
+import { listSearches, toListEntries } from "../../lib/history";
+import HistoryList from "../history/HistoryList";
 
-const RATING_LABELS = {
-  "good deal": "Good deal",
-  fair: "Fairly priced",
-  overpriced: "Overpriced",
-  "not enough data": "Not enough data",
-};
-// "619 W College Ave, State College, PA 16801" -> "619 W College Ave, State College"
-const shortAddress = (a) => a.split(",").slice(0, 2).join(",");
+const RECENT_SEARCHES = 5;
 
 const BRANDS = { visa: "Visa", mastercard: "Mastercard", amex: "Amex", discover: "Discover" };
 const shortDate = (d) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -85,12 +79,13 @@ export default async function AccountPage({ searchParams }) {
   const access = await getUserPlan(userId);
   const { tier, plan, subscription, fullAccess } = access;
   const usage = await planUsage(userId, access);
-  const [card, purchases, tab, analyses] = await Promise.all([
+  const [card, purchases, tab, recentSearches] = await Promise.all([
     subscription?.stripe_customer_id ? savedCard(subscription.stripe_customer_id).catch(() => null) : null,
     recentPurchases(userId),
     fullAccess ? null : tabSummary(userId),
-    sql ? recentAnalyses(userId).catch(() => []) : [],
+    sql ? listSearches(userId, RECENT_SEARCHES).catch(() => []) : [],
   ]);
+  const searches = toListEntries(recentSearches);
   const user = await currentUser();
   const email = user.primaryEmailAddress?.emailAddress;
   const name = user.firstName || email;
@@ -219,54 +214,20 @@ export default async function AccountPage({ searchParams }) {
           </div>
 
           <div className="card">
-            <h3>Your AI analyses</h3>
-            {analyses.length === 0 ? (
+            <div className="recent-head">
+              <h3>Your searches</h3>
+              {searches.length > 0 && <Link href="/history">See all</Link>}
+            </div>
+            {searches.length === 0 ? (
               <p>
-                You haven&apos;t run an AI analysis yet. The ones you run will show up here to look back on.
+                You haven&apos;t searched yet. <Link href="/search">Search an address</Link> and it will show up
+                here. Your AI analyses are saved on each search&apos;s page.
               </p>
             ) : (
-              <ul className="past-list">
-                {analyses.map((a) => (
-                  <li key={a.id}>
-                    <details className="past-analysis">
-                      <summary>
-                        <span className={`past-rating past-${a.result.verdict.rating.replace(/\s+/g, "-")}`}>
-                          {RATING_LABELS[a.result.verdict.rating]}
-                        </span>
-                        <span className="past-label">{shortAddress(a.address)}</span>
-                        <span className="past-open" aria-hidden="true">
-                          ▸
-                        </span>
-                        <span className="past-meta">
-                          {a.mode === "buy" ? "Buying" : "Renting"} · {a.label} · {shortDate(a.created_at)}
-                        </span>
-                      </summary>
-                      <div className="past-body">
-                        <p>{a.result.verdict.summary}</p>
-                        {a.result.recommendations.length > 0 && (
-                          <ul>
-                            {a.result.recommendations.map((r) => (
-                              <li key={r.listingId}>{r.headline}</li>
-                            ))}
-                          </ul>
-                        )}
-                        {!a.demo && (
-                          <Link
-                            href={`/results?${new URLSearchParams({
-                              address: a.address,
-                              radius: String(a.radius_miles),
-                              mode: a.mode,
-                              from: "history",
-                            })}`}
-                          >
-                            Open this search →
-                          </Link>
-                        )}
-                      </div>
-                    </details>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <HistoryList entries={searches} compact />
+                <p className="panel-muted">Open a search to see its earlier AI analyses.</p>
+              </>
             )}
           </div>
         </div>
