@@ -2413,6 +2413,44 @@ h3 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+
+.footer-links a {
+  color: var(--muted);
+}
+
+.footer-links a:hover {
+  color: var(--text);
+}
+
+/* Policy pages (refunds) */
+
+.policy .card {
+  margin-top: 20px;
+}
+
+.policy h2 {
+  font-size: 1.15rem;
+  margin: 0 0 10px;
+}
+
+.policy p,
+.policy li {
+  line-height: 1.6;
+}
+
+.policy ul {
+  margin: 8px 0;
+  padding-left: 20px;
 }
 
 /* Small screens */

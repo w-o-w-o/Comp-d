@@ -112,6 +112,9 @@ export default async function AccountPage({ searchParams }) {
               ) : (
                 <p>No card saved yet. Your first payment saves one with Stripe for one-click searches.</p>
               )}
+              <p className="panel-muted">
+                Questions about a charge? See our <Link href="/refunds">refund policy</Link>.
+              </p>
               {subscription?.stripe_customer_id && (
                 <a href="/api/billing-portal" className="btn btn-ghost">
                   {card ? "Update or remove card" : "Manage billing"}

@@ -279,6 +279,9 @@ export default function Home() {
               Not sure yet? <Link href="/results?demo=1">Try a real search free</Link>. We pick a new address every
               week.
             </p>
+            <p className="pricing-demo">
+              Cancel plans anytime. See our <Link href="/refunds">refund policy</Link>.
+            </p>
           </div>
         </section>
 
@@ -294,7 +297,11 @@ export default function Home() {
       <footer className="footer">
         <div className="wrap footer-inner">
           <span className="logo">Comp&apos;d</span>
-          <span>Sara Petollari</span>
+          <span className="footer-links">
+            <Link href="/refunds">Refund policy</Link>
+            <Link href="/refunds#contact">Contact</Link>
+            <span>Sara Petollari</span>
+          </span>
         </div>
       </footer>
     </>
