@@ -960,6 +960,32 @@ h3 {
   font-size: 0.88rem;
 }
 
+/* How the $5 hold works: a highlighted box above the pay button. */
+.hold-notice {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  font-size: 0.88rem;
+}
+
+.hold-notice-head {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.hold-notice ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 2px;
+}
+
+.hold-notice-tab {
+  margin: 6px 0 0;
+}
+
 .paywall-plans {
   margin: 10px 0 0;
   font-size: 0.82rem;

@@ -33,15 +33,18 @@ export default function RefundsPage() {
         </section>
 
         <section className="card">
-          <h2>How re-analyses are charged (the tab)</h2>
+          <h2>How pay-per-search is charged (the tab)</h2>
           <p>
-            Re-analyses go on a tab so you don&apos;t get a separate small charge for each one. When you start a tab,
-            we place a temporary hold of {formatCents(TAB_HOLD)} on your card. That isn&apos;t a charge: your bank
-            shows it as pending. We charge only for the re-analyses you run ({formatCents(REANALYSIS_PRICE)} each), in
-            one payment, {TAB_HOURS} hours after the tab opens or as soon as it&apos;s used up, whichever comes first.
-            The rest of the hold is released, and if you don&apos;t run any, the whole hold is released and
-            you&apos;re not charged. If you use up a tab, it&apos;s charged right away and your next re-analysis starts
-            a new {formatCents(TAB_HOLD)} hold on the same card (after {AUTO_RENEW_PER_DAY} in a day, we ask you
+            Searches and re-analyses go on a tab, so you don&apos;t get a separate small charge for each one. When you
+            start a tab, we place a temporary <strong>{formatCents(TAB_HOLD)} hold</strong> on your card. That
+            isn&apos;t a charge: your bank shows it as pending. You&apos;re only charged for what you use:{" "}
+            <strong>{formatCents(SEARCH_PRICE)}</strong> for each search and its first AI analysis, and{" "}
+            <strong>+{formatCents(REANALYSIS_PRICE)}</strong> for every re-analysis.
+          </p>
+          <p>
+            The hold lifts after {TAB_HOURS} hours: we charge what you used in one payment and release the rest. If
+            you use up the {formatCents(TAB_HOLD)} sooner, it&apos;s charged right away and a new{" "}
+            {formatCents(TAB_HOLD)} hold starts on the same card (after {AUTO_RENEW_PER_DAY} in a day, we ask you
             first). Your bank may take a few days to remove a released hold.
           </p>
         </section>

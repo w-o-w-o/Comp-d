@@ -83,7 +83,8 @@ const plans = [
     blurb: "For checking the one place you're eyeing.",
     features: [
       "Every nearby home for rent or sale, for 7 days",
-      "1 AI analysis included (more for $0.50 each)",
+      "1 AI analysis included (+$0.50 per re-analysis)",
+      "Paid with a $5 hold: you're charged once, only for what you use",
       "3 commute checks",
       "Card saved with Stripe for one-click searches",
     ],

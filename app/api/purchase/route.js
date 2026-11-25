@@ -3,7 +3,7 @@ import { sql } from "../../../lib/db";
 import { getPass, searchKeyFor } from "../../../lib/access";
 import { getUserPlan, REANALYSIS_PRICE } from "../../../lib/plans";
 import { getOpenTab } from "../../../lib/tabs";
-import { chargeSavedCard, checkoutFor, PRODUCTS, savedCard } from "../../../lib/payments";
+import { chargeSavedCard, checkoutFor, payForSearch, PRODUCTS, savedCard } from "../../../lib/payments";
 import { stripe } from "../../../lib/stripe";
 
 function readSearch(o) {
@@ -57,7 +57,9 @@ export async function POST(request) {
   }
   const kind = body.kind;
   const search = readSearch(body);
-  if (!PRODUCTS[kind] || !search) return Response.json({ error: "Invalid purchase." }, { status: 400 });
+  if (!["search", "tab", "reanalysis"].includes(kind) || !search) {
+    return Response.json({ error: "Invalid purchase." }, { status: 400 });
+  }
   const label = String(body.label || "").replace(/\s+/g, " ").slice(0, 150) || "Search";
   const returnTo = safeReturn(body.returnTo);
 
@@ -76,6 +78,20 @@ export async function POST(request) {
   }
 
   try {
+    // Searches go on the user's tab (a $5 hold, charged later for what's used).
+    if (kind === "search") {
+      const user = await currentUser();
+      const result = await payForSearch({
+        userId,
+        email: user?.primaryEmailAddress?.emailAddress,
+        searchKey: search.key,
+        label,
+        useSavedCard: Boolean(body.useSavedCard),
+        origin: request.nextUrl.origin,
+        returnTo,
+      });
+      return Response.json(result);
+    }
     const cust = await customerId(userId);
     const card = body.useSavedCard ? await savedCard(cust) : null;
     if (card) {

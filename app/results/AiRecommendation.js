@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatFacts, formatMiles, formatPrice } from "./format";
 import AiPreferences from "./AiPreferences";
-import PayButton from "./Payment";
+import PayButton, { HoldNotice } from "./Payment";
 import { AMENITY_FEATURES, sourceName } from "./amenities";
 
 const dollars = (cents) => `$${(cents / 100).toFixed(2)}`;
@@ -216,9 +216,11 @@ export default function AiRecommendation({
           )}
           {ai.payment ? (
             <div className="ai-payment">
-              <p className={["reanalysis", "tab"].includes(ai.payment.kind) ? "panel-muted" : "panel-error"}>
-                {ai.payment.message}
-              </p>
+              {ai.payment.message && (
+                <p className={["reanalysis", "tab"].includes(ai.payment.kind) ? "panel-muted" : "panel-error"}>
+                  {ai.payment.message}
+                </p>
+              )}
               {ai.payment.kind === "reanalysis" && purchase && (
                 <PayButton
                   purchase={{ ...purchase, kind: "reanalysis" }}
@@ -229,14 +231,17 @@ export default function AiRecommendation({
                 </PayButton>
               )}
               {ai.payment.kind === "tab" && purchase && (
-                <PayButton
-                  purchase={{ ...purchase, kind: "tab" }}
-                  price={ai.payment.price}
-                  hold={{ each: ai.payment.each }}
-                  onPaid={run}
-                >
-                  Start a tab: hold
-                </PayButton>
+                <>
+                  <HoldNotice hold={ai.payment.price} each={ai.payment.each} />
+                  <PayButton
+                    purchase={{ ...purchase, kind: "tab" }}
+                    price={ai.payment.each}
+                    hold={{ amount: ai.payment.price }}
+                    onPaid={run}
+                  >
+                    Re-analyze
+                  </PayButton>
+                </>
               )}
             </div>
           ) : (
@@ -327,11 +332,20 @@ function AnalysisCostNote({ access }) {
       hour: "numeric",
       minute: "2-digit",
     });
-    text =
-      `New analyses are $0.50, added to your tab: ${dollars(access.tab.usedCents)} so far, ` +
-      `charged ${closes} or when it reaches ${dollars(access.tab.holdCents)}. Reopening one you've already run is free.`;
+    text = (
+      <>
+        Re-analyses add <strong>+$0.50</strong> to your tab: <strong>{dollars(access.tab.usedCents)}</strong> of{" "}
+        {dollars(access.tab.holdCents)} so far, charged {closes} (when the hold lifts). Reopening one you&apos;ve
+        already run is free.
+      </>
+    );
   } else {
-    text = "New analyses are $0.50 each, added to a tab and charged together. Reopening one you've already run is free.";
+    text = (
+      <>
+        Re-analyses are <strong>+$0.50</strong> each, on a $5 hold that&apos;s charged once for what you use.
+        Reopening one you&apos;ve already run is free.
+      </>
+    );
   }
   return text ? <p className="panel-muted pay-note">{text}</p> : null;
 }

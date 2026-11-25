@@ -30,7 +30,7 @@ async function recentPurchases(userId) {
     .slice(0, 5);
 }
 
-const PURCHASE_LABELS = { search: "Search", reanalysis: "AI re-analysis", tab: "AI re-analyses (tab)" };
+const PURCHASE_LABELS = { search: "Search", reanalysis: "AI re-analysis", tab: "Tab (searches and re-analyses)" };
 
 export const metadata = { title: "My account — Comp'd" };
 
@@ -111,7 +111,8 @@ export default async function AccountPage({ searchParams }) {
             {!fullAccess && tier === "free" && (
               <p>
                 Each search is {formatCents(SEARCH_PRICE)} and includes 1 AI analysis and 3 commute checks.
-                Extra analyses are {formatCents(REANALYSIS_PRICE)}.
+                Re-analyses are +{formatCents(REANALYSIS_PRICE)}. Both go on a $5 hold that&apos;s charged once for
+                what you use.
               </p>
             )}
             {usage && (
@@ -160,7 +161,7 @@ export default async function AccountPage({ searchParams }) {
               )}
               {tab && (
                 <p className="tab-note">
-                  <strong>Open tab: {formatCents(tab.usedCents)}</strong> of AI re-analyses so far. We&apos;re holding{" "}
+                  <strong>Open tab: {formatCents(tab.usedCents)}</strong> of searches and re-analyses so far. We&apos;re holding{" "}
                   {formatCents(tab.holdCents)} on your card and will charge only the {formatCents(tab.usedCents)} {closesIn(tab.closesAt)} (or sooner if the tab fills
                   up); the rest is released.
                 </p>
