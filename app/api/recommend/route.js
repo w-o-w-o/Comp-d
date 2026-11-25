@@ -14,6 +14,7 @@ import { defaultFilters, matchesFilters, medianPricePerSqft, parseFilters } from
 import { claimAnalysis, ensureSearchAccess, PaymentRequired, planUsage, searchKeyFor } from "../../../lib/access";
 import { demoAt } from "../../../lib/demo";
 import { tabSummary } from "../../../lib/tabs";
+import { analysisLabel, saveAnalysis } from "../../../lib/analyses";
 import {
   checkListing,
   describePreferences,
@@ -219,6 +220,20 @@ export async function POST(request) {
       userId,
       claim: () => claimAnalysis(userId, access, searchKey, { demo }),
     });
+    // Kept in the user's list of analyses to look back on (a failure here
+    // shouldn't cost them the result).
+    await saveAnalysis({
+      userId,
+      searchKey,
+      address: demoWeek ? demoWeek.address : address,
+      mode,
+      radiusMiles,
+      demo: Boolean(demoWeek),
+      label: analysisLabel(describePreferences(priorities, mode)),
+      result,
+      listings: enriched,
+    }).catch((err) => console.error("Couldn't save the analysis:", err.message));
+
     // The plan's count after this analysis, so the page stays up to date.
     const [usage, tab] = demoWeek || access.fullAccess
       ? [null, null]

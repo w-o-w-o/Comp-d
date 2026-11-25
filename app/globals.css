@@ -1962,6 +1962,117 @@ h3 {
   font-weight: 800;
 }
 
+/* Earlier AI analyses: small cards that open to the full result. */
+.past-analyses {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.past-analyses h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.past-analyses ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.past-analysis {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.past-analysis:has(.past-good-deal) {
+  border-left-color: #2fa77a;
+}
+
+.past-analysis:has(.past-fair) {
+  border-left-color: #c9a227;
+}
+
+.past-analysis:has(.past-overpriced) {
+  border-left-color: #d9534f;
+}
+
+.past-analysis summary {
+  cursor: pointer;
+  padding: 8px 12px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 2px 8px;
+  align-items: center;
+  font-size: 0.85rem;
+  list-style: none;
+}
+
+.past-analysis summary::-webkit-details-marker {
+  display: none;
+}
+
+.past-open {
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+
+.past-analysis[open] .past-open {
+  transform: rotate(90deg);
+}
+
+.past-analysis[open] summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.past-analysis > .ai-result {
+  padding: 10px 12px 12px;
+}
+
+.past-rating {
+  font-weight: 700;
+}
+
+.past-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.past-meta {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+/* The account page's list: a short summary inside each card. */
+.past-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.past-body {
+  padding: 10px 12px 12px;
+  font-size: 0.88rem;
+}
+
+.past-body p {
+  margin: 0 0 6px;
+}
+
+.past-body ul {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
 .ai-verdict p {
   margin: 4px 0 0;
   font-size: 0.92rem;

@@ -85,7 +85,73 @@ export function useRecommendation({ position, address, mode, radiusMiles, commut
   const matchesLast = (p, f) => state.status !== "idle" && state.forKey === keyFor(p, f);
   // A payment asked for the current settings (it no longer applies once they change).
   const payment = state.payment?.forKey === searchKey ? state.payment : null;
-  return { ...state, stale, picks, run, matchesLast, ranWith, payment, ranNew };
+  // Which search this is, for loading earlier analyses of it.
+  const where = position ? { lat: position.lat, lng: position.lng, mode } : null;
+  return { ...state, stale, picks, run, matchesLast, ranWith, payment, ranNew, where };
+}
+
+// The user's earlier analyses of this search (address and rent/buy), newest
+// first, reloaded after each new one. `exclude`: the analysis shown above.
+function usePastAnalyses(where, latestKey) {
+  const [list, setList] = useState([]);
+  const whereKey = where ? `${where.lat},${where.lng},${where.mode}` : null;
+  useEffect(() => {
+    if (!where) return;
+    let cancelled = false;
+    fetch(`/api/analyses?${new URLSearchParams({ lat: where.lat, lng: where.lng, mode: where.mode })}`)
+      .then((r) => (r.ok ? r.json() : { analyses: [] }))
+      .then((b) => !cancelled && setList(b.analyses || []))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [whereKey, latestKey]);
+  return list;
+}
+
+const whenLabel = (d) =>
+  new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+// Earlier analyses as small cards; each opens to the full result as it was.
+function PastAnalyses({ ai, mode, listingsById, onSelect }) {
+  const showing = ai.status === "ready" && !ai.stale ? ai.data.analysisKey : null;
+  const list = usePastAnalyses(ai.where, ai.status === "ready" ? ai.data.analysisKey : null).filter(
+    (a) => a.analysisKey !== showing
+  );
+  if (!list.length) return null;
+  return (
+    <div className="past-analyses">
+      <h3>Earlier analyses</h3>
+      <ul>
+        {list.map((a) => {
+          // The picks as they were when this ran (homes may have changed or gone since).
+          const saved = new Map((a.result.pickListings || []).map((l) => [l.id, l]));
+          const lookup = { get: (id) => saved.get(id) || listingsById.get(id) };
+          return (
+            <li key={a.id}>
+              <details className="past-analysis">
+                <summary>
+                  <span className={`past-rating past-${a.result.verdict.rating.replace(/\s+/g, "-")}`}>
+                    {RATING_LABELS[a.result.verdict.rating]}
+                  </span>
+                  <span className="past-label">{a.label}</span>
+                  <span className="past-open" aria-hidden="true">
+                    ▸
+                  </span>
+                  <span className="past-meta">
+                    {whenLabel(a.createdAt)} · {formatMiles(a.radiusMiles)} · {a.result.recommendations.length}{" "}
+                    {a.result.recommendations.length === 1 ? "pick" : "picks"}
+                  </span>
+                </summary>
+                <AiResult result={a.result} listingsById={lookup} mode={mode} onSelect={onSelect} />
+              </details>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 // Whether the AI panel is minimized to a bubble, remembered in this browser.
@@ -283,6 +349,8 @@ export default function AiRecommendation({
       {ai.status === "ready" && !ai.stale && (
         <AiResult result={ai.data} listingsById={listingsById} mode={mode} onSelect={onSelect} />
       )}
+
+      {!locked && <PastAnalyses ai={ai} mode={mode} listingsById={listingsById} onSelect={onSelect} />}
     </div>
   );
 }
