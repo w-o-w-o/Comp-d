@@ -71,7 +71,8 @@ export default function PayButton({ purchase, price, onPaid, hold = null, childr
           {hold ? (
             <p>
               Hold <strong>{dollars(price)}</strong> on {cardLabel(card)}? You&apos;ll be charged only{" "}
-              {dollars(hold.each)} per re-analysis you run, in one payment; the rest of the hold is released.
+              {dollars(hold.each)} per re-analysis you run, in one payment; the rest of the hold is released. If
+              you use it all, it&apos;s charged and a new {dollars(price)} hold starts on this card.
             </p>
           ) : (
             <p>

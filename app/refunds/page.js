@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Nav from "../Nav";
 import { formatCents, PLANS, REANALYSIS_PRICE, SEARCH_PRICE, TAB_HOLD, TAB_HOURS } from "../../lib/plans";
+import { AUTO_RENEW_PER_DAY } from "../../lib/tabs";
 
 export const metadata = { title: "Refund policy — Comp'd" };
 
@@ -39,7 +40,9 @@ export default function RefundsPage() {
             shows it as pending. We charge only for the re-analyses you run ({formatCents(REANALYSIS_PRICE)} each), in
             one payment, {TAB_HOURS} hours after the tab opens or as soon as it&apos;s used up, whichever comes first.
             The rest of the hold is released, and if you don&apos;t run any, the whole hold is released and
-            you&apos;re not charged. Your bank may take a few days to remove a released hold.
+            you&apos;re not charged. If you use up a tab, it&apos;s charged right away and your next re-analysis starts
+            a new {formatCents(TAB_HOLD)} hold on the same card (after {AUTO_RENEW_PER_DAY} in a day, we ask you
+            first). Your bank may take a few days to remove a released hold.
           </p>
         </section>
 
