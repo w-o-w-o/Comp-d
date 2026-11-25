@@ -117,8 +117,8 @@ export function SearchPaywall({ comps, purchase }) {
         Unlock
       </PayButton>
       <p className="panel-muted paywall-plans">
-        Searching a lot? <a href="/api/checkout?plan=basic">Basic $10/mo</a> includes 6 searches, or{" "}
-        <a href="/api/checkout?plan=advanced">Unlimited $25/mo</a>.{" "}
+        Searching a lot? <a href="/api/checkout?plan=basic">Basic $15/mo</a> includes 10 searches, or{" "}
+        <a href="/api/checkout?plan=advanced">Pro $29/mo</a> includes 30 searches and 60 AI analyses.{" "}
         <a href="/refunds" target="_blank" rel="noopener">Refund policy</a>
       </p>
     </div>

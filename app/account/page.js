@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { SignOutButton } from "@clerk/nextjs";
 import Nav from "../Nav";
-import { formatCents, getUserPlan, REANALYSIS_PRICE, SEARCH_PRICE } from "../../lib/plans";
-import { planSearchesUsed } from "../../lib/access";
+import { formatCents, getUserPlan, PLANS, REANALYSIS_PRICE, SEARCH_PRICE } from "../../lib/plans";
+import { planUsage } from "../../lib/access";
 import { savedCard } from "../../lib/payments";
 import { ensureTables, sql } from "../../lib/db";
 
@@ -21,6 +21,24 @@ async function recentPurchases(userId) {
 
 export const metadata = { title: "My account — Comp'd" };
 
+// "Searches: 12 of 30 left" with a bar, plus when the next one frees up.
+function UsageRow({ label, count }) {
+  const left = Math.max(0, count.max - count.used);
+  return (
+    <li>
+      <span>
+        {label}: <strong>{left} of {count.max} left</strong>
+        {count.nextFree && left < count.max && (
+          <span className="panel-muted"> · next frees up {shortDate(count.nextFree)}</span>
+        )}
+      </span>
+      <span className="usage-bar" aria-hidden="true">
+        <span style={{ width: `${Math.round((100 * left) / count.max)}%` }} />
+      </span>
+    </li>
+  );
+}
+
 const BILLING_MESSAGES = {
   error: "Something went wrong with billing. Please try again.",
   unavailable: "Payments aren't set up on this server yet.",
@@ -34,8 +52,9 @@ export default async function AccountPage({ searchParams }) {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in?redirect_url=/account");
   const { billing } = await searchParams;
-  const { tier, plan, subscription, fullAccess } = await getUserPlan(userId);
-  const planSearches = tier !== "free" && !fullAccess ? await planSearchesUsed(userId, tier) : null;
+  const access = await getUserPlan(userId);
+  const { tier, plan, subscription, fullAccess } = access;
+  const usage = await planUsage(userId, access);
   const [card, purchases] = await Promise.all([
     subscription?.stripe_customer_id ? savedCard(subscription.stripe_customer_id).catch(() => null) : null,
     recentPurchases(userId),
@@ -75,21 +94,28 @@ export default async function AccountPage({ searchParams }) {
                 Extra analyses are {formatCents(REANALYSIS_PRICE)}.
               </p>
             )}
-            {planSearches != null && (
-              <p>
-                {planSearches} of {plan.searchesPer30Days} searches used in the last 30 days
-                {tier === "advanced" ? " (fair-use limit)" : ""}. After that, searches are{" "}
-                {formatCents(SEARCH_PRICE)} each.
-              </p>
+            {usage && (
+              <>
+                <ul className="usage-list">
+                  <UsageRow label="Searches" count={usage.searches} />
+                  {usage.ai && <UsageRow label="AI analyses" count={usage.ai} />}
+                </ul>
+                <p className="panel-muted">
+                  Counted over the last 30 days: each one frees up 30 days after you use it. Reopening a search
+                  or analysis you&apos;ve already run is free. Past your plan, searches are{" "}
+                  {formatCents(SEARCH_PRICE)} and analyses {formatCents(REANALYSIS_PRICE)}.
+                </p>
+              </>
             )}
             <div className="plan-actions">
               {!fullAccess && tier === "free" && (
                 <>
                   <a href="/api/checkout?plan=basic" className="btn">
-                    Basic — $10/mo (6 searches)
+                    {PLANS.basic.name} — ${PLANS.basic.price / 100}/mo ({PLANS.basic.searchesPer30Days} searches)
                   </a>
                   <a href="/api/checkout?plan=advanced" className="btn btn-ghost">
-                    Unlimited — $25/mo
+                    {PLANS.advanced.name} — ${PLANS.advanced.price / 100}/mo ({PLANS.advanced.searchesPer30Days}{" "}
+                    searches)
                   </a>
                 </>
               )}

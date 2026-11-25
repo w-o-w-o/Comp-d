@@ -887,6 +887,38 @@ h3 {
   margin: 0 0 8px;
 }
 
+/* What's left on the plan: a line and a bar per limit. */
+.usage-list {
+  list-style: none;
+  margin: 4px 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.usage-list li {
+  display: grid;
+  gap: 4px;
+}
+
+.usage-bar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.usage-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.plan-usage {
+  margin-top: 8px;
+}
+
 .plan-actions {
   display: flex;
   flex-wrap: wrap;

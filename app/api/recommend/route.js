@@ -11,7 +11,7 @@ import { getSavedAmenities } from "../../../lib/amenities";
 import { addressKey } from "../../results/amenities";
 import { distanceMiles, fetchRadiusFor } from "../../results/geo";
 import { defaultFilters, matchesFilters, medianPricePerSqft, parseFilters } from "../../results/quality";
-import { claimAnalysis, ensureSearchAccess, PaymentRequired, searchKeyFor } from "../../../lib/access";
+import { claimAnalysis, ensureSearchAccess, PaymentRequired, planUsage, searchKeyFor } from "../../../lib/access";
 import { demoAt } from "../../../lib/demo";
 import {
   checkListing,
@@ -82,7 +82,6 @@ export async function POST(request) {
   }
 
   const access = await getUserPlan(userId);
-  const { plan } = access;
   const demoWeek = await demoAt(lat, lng);
 
   try {
@@ -97,6 +96,7 @@ export async function POST(request) {
       mode,
       address: demoWeek ? demoWeek.address : address,
       userId,
+      addressesPerDay: access.plan.newAddressesPerDay,
       ...(demoWeek && { listingsCenter: demoWeek.center, excludeAddress: demoWeek.address }),
     });
 
@@ -216,10 +216,11 @@ export async function POST(request) {
       subjectAmenities,
       radiusMiles,
       userId,
-      dailyLimit: access.fullAccess ? null : plan.aiPerDay,
       claim: () => claimAnalysis(userId, access, searchKey, { demo }),
     });
-    return Response.json(result);
+    // The plan's count after this analysis, so the page stays up to date.
+    const usage = demoWeek ? null : await planUsage(userId, access);
+    return Response.json({ ...result, usage });
   } catch (err) {
     if (err instanceof PaymentRequired) {
       return Response.json({ error: err.message, payment: err.payment }, { status: 402 });

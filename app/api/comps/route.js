@@ -3,7 +3,7 @@ import { sql } from "../../../lib/db";
 import { BudgetError } from "../../../lib/rentcast";
 import { loadComps } from "../../../lib/comps";
 import { getUserPlan } from "../../../lib/plans";
-import { commuteLimitFor, ensureSearchAccess, PaymentRequired, searchKeyFor } from "../../../lib/access";
+import { commuteLimitFor, ensureSearchAccess, PaymentRequired, planUsage, searchKeyFor } from "../../../lib/access";
 import { demoAt } from "../../../lib/demo";
 import { FETCH_RADII_MILES } from "../../results/geo";
 
@@ -51,8 +51,11 @@ export async function GET(request) {
       mode,
       address: demo ? demoWeek.address : address,
       userId,
+      addressesPerDay: access.plan.newAddressesPerDay,
       ...(demo && { listingsCenter: demoWeek.center, excludeAddress: demoWeek.address }),
     });
+    // After unlocking, so this search is already counted.
+    const usage = demo ? null : await planUsage(userId, access);
     return Response.json({
       mode,
       fetchRadius: radius,
@@ -65,6 +68,7 @@ export async function GET(request) {
         tier: access.tier,
         aiIncludedLeft: unlocked.pass ? !unlocked.pass.ai_included_used : unlocked.source !== "demo",
         commuteLimit: commuteLimitFor(access, { demo }),
+        usage,
       },
     });
   } catch (err) {

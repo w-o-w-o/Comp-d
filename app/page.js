@@ -92,11 +92,11 @@ const plans = [
   },
   {
     name: "Basic",
-    price: "$10",
+    price: "$15",
     period: "/month",
     blurb: "For renters and buyers actively searching.",
     features: [
-      "6 searches a month",
+      "10 searches a month",
       "1 AI analysis per search (more for $0.50 each)",
       "3 commute checks per search",
     ],
@@ -105,18 +105,18 @@ const plans = [
     featured: true,
   },
   {
-    name: "Unlimited",
-    price: "$25",
+    name: "Pro",
+    price: "$29",
     period: "/month",
     blurb: "For heavy searchers, investors, and realtors.",
     features: [
-      "Unlimited searches*",
-      "Unlimited AI analyses*",
+      "30 searches a month",
+      "60 AI analyses a month, for any of your searches",
       "10 commute checks per search",
     ],
-    cta: "Get Unlimited",
+    cta: "Get Pro",
     href: "/api/checkout?plan=advanced",
-    note: "*Fair use: up to 40 searches a month and 15 AI analyses a day, to keep out automated abuse.",
+    note: "Your account page shows how many you have left. Reopening a search or analysis you've already run is free.",
   },
 ];
 

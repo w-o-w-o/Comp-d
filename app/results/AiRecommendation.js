@@ -299,8 +299,14 @@ function AnalysisCostNote({ access }) {
   let text = null;
   if (access.demo) {
     text = "The standard analysis is free in the demo. With your own priorities or filters: 1 custom analysis this week.";
-  } else if (access.source === "full" || access.tier === "advanced") {
+  } else if (access.source === "full") {
     text = null;
+  } else if (access.usage?.ai) {
+    // Pro: new analyses come out of the plan's monthly count.
+    const left = Math.max(0, access.usage.ai.max - access.usage.ai.used);
+    text = left
+      ? `New analyses use 1 of your ${left} remaining this month. Reopening one you've already run is free.`
+      : "You've used this month's plan analyses, so new ones cost $0.50. Reopening one you've already run is free.";
   } else if (access.aiIncludedLeft) {
     text = "Your first analysis is included with this search.";
   } else {

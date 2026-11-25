@@ -6,6 +6,9 @@ import SearchBar from "./SearchBar";
 import MapsProvider from "../maps/MapsProvider";
 import HistoryList from "../history/HistoryList";
 import { listSearches, toListEntries } from "../../lib/history";
+import { formatCents, getUserPlan, SEARCH_PRICE } from "../../lib/plans";
+import { planUsage } from "../../lib/access";
+import { planUsageText } from "../results/PlanUsage";
 
 export const metadata = { title: "Search — Comp'd" };
 
@@ -15,7 +18,11 @@ export default async function SearchPage() {
   // Sends logged-out visitors to the log-in page, then back here afterwards.
   const { userId } = await auth();
   if (!userId) redirect("/sign-in?redirect_url=/search");
-  const recent = toListEntries(await listSearches(userId, RECENT_COUNT));
+  const access = await getUserPlan(userId);
+  const [searches, usage] = await Promise.all([listSearches(userId, RECENT_COUNT), planUsage(userId, access)]);
+  const recent = toListEntries(searches);
+  // Subscribers see what's left on their plan instead of the per-search price.
+  const usageText = planUsageText(usage);
 
   return (
     <>
@@ -29,10 +36,16 @@ export default async function SearchPage() {
         <MapsProvider>
           <SearchBar />
         </MapsProvider>
-        <p className="search-pricing">
-          Each search is $2.50 and includes an AI analysis and 3 commute checks, or{" "}
-          <Link href="/#pricing">get a monthly plan</Link>.
-        </p>
+        {access.fullAccess ? null : usageText ? (
+          <p className="search-pricing">
+            {usageText} <Link href="/account">See your plan</Link>.
+          </p>
+        ) : (
+          <p className="search-pricing">
+            Each search is {formatCents(SEARCH_PRICE)} and includes an AI analysis and 3 commute checks, or{" "}
+            <Link href="/#pricing">get a monthly plan</Link>.
+          </p>
+        )}
 
         <div className="try-free">
           <div>

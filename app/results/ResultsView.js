@@ -18,6 +18,7 @@ import { PLACE_FIELDS, recallPlace, rememberPlace } from "../maps/placeLookup";
 import useComparables from "./useComparables";
 import AiRecommendation, { useAiCollapsed, useRecommendation } from "./AiRecommendation";
 import { SearchPaywall } from "./Payment";
+import PlanUsage from "./PlanUsage";
 import AreaInsights, { useArea } from "./AreaInsights";
 import CommuteBox, { formatCommute, useCommute } from "./Commute";
 import { useNearbyPlaces } from "./NearbyPlaces";
@@ -234,6 +235,8 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
       }
     : null;
   const access = comps.status === "ready" ? comps.data.access : null;
+  // What's left on the user's plan; a new analysis returns the updated count.
+  const usage = (ai.status === "ready" && ai.data?.usage) || access?.usage || null;
 
   function pickPreset(miles) {
     setRadiusMiles(miles);
@@ -265,7 +268,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
       onSelect={setSelectedId}
       canRun={comps.status === "ready" && shown.length > 0}
       locked={comps.status === "locked"}
-      access={access}
+      access={access && { ...access, usage }}
       purchase={purchase}
       priorities={priorities}
       prefsCtx={{ estimate: estimateAmount, radiusMiles }}
@@ -454,6 +457,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             ) : (
               <Estimate comps={comps} mode={mode} />
             )}
+            <PlanUsage usage={usage} />
           </div>
 
           <AreaInsights
