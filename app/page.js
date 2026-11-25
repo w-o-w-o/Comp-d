@@ -143,13 +143,13 @@ const plans = [
     period: "/month",
     blurb: "For heavy searchers, investors, and realtors.",
     features: [
-      `${PLANS.advanced.searchesPer30Days} searches a month`,
-      `${PLANS.advanced.aiPer30Days} AI analyses a month, for any of your searches`,
+      `${PLANS.advanced.creditsPer30Days} credits a month, spent however you like`,
+      `Same credits as Basic: a search uses ${CREDIT_COST.search}, a re-analysis ${CREDIT_COST.reanalysis}`,
       `${PLANS.advanced.commutesPerSearch} commute checks per search`,
     ],
     cta: `Get ${PLANS.advanced.name}`,
     href: "/api/checkout?plan=advanced",
-    note: "Your account page shows how many you have left. Reopening a search or analysis you've already run is free.",
+    note: `That's up to ${PLANS.advanced.creditsPer30Days / CREDIT_COST.search} searches (${usd(Math.round(PLANS.advanced.price / (PLANS.advanced.creditsPer30Days / CREDIT_COST.search)))} each), or a mix like 20 searches and 25 re-analyses. Your account page shows what's left.`,
   },
 ];
 

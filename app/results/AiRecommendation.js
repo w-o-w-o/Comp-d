@@ -320,14 +320,10 @@ function AnalysisCostNote({ access }) {
     text = "The standard analysis is free in the demo. With your own priorities or filters: 1 custom analysis this week.";
   } else if (access.source === "full") {
     text = null;
-  } else if (access.usage?.ai && access.usage.ai.max > access.usage.ai.used) {
-    // Pro: new analyses come out of the plan's monthly count.
-    const left = access.usage.ai.max - access.usage.ai.used;
-    text = `New analyses use 1 of your ${left} remaining this month. Reopening one you've already run is free.`;
   } else if (access.aiIncludedLeft) {
     text = "Your first analysis is included with this search.";
   } else if (access.usage?.credits && access.usage.credits.max > access.usage.credits.used) {
-    // Basic: re-analyses come out of the plan's credits.
+    // Basic and Pro: re-analyses come out of the plan's credits.
     const c = access.usage.credits;
     const left = c.max - c.used;
     text =

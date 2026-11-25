@@ -193,7 +193,7 @@ export function SearchPaywall({ comps, purchase }) {
       <p className="panel-muted paywall-plans">
         Searching a lot? <a href="/api/checkout?plan=basic">Basic $15/mo</a> includes 50 credits (up to 10 searches,
         or fewer searches and more re-analyses), or{" "}
-        <a href="/api/checkout?plan=advanced">Pro $29/mo</a> includes 30 searches and 60 AI analyses.{" "}
+        <a href="/api/checkout?plan=advanced">Pro $29/mo</a> includes 150.{" "}
         <a href="/refunds" target="_blank" rel="noopener">Refund policy</a>
       </p>
     </div>

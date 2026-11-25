@@ -118,13 +118,11 @@ export default async function AccountPage({ searchParams }) {
             {usage && (
               <>
                 <ul className="usage-list">
-                  {usage.credits && <UsageRow label="Credits" count={usage.credits} />}
-                  {usage.searches && <UsageRow label="Searches" count={usage.searches} />}
-                  {usage.ai && <UsageRow label="AI analyses" count={usage.ai} />}
+                  <UsageRow label="Credits" count={usage.credits} />
                 </ul>
                 <p className="panel-muted">
-                  {usage.credits &&
-                    `A search uses ${CREDIT_COST.search} credits and includes its first AI analysis; each re-analysis uses ${CREDIT_COST.reanalysis} (or your last one). `}
+                  A search uses {CREDIT_COST.search} credits and includes its first AI analysis; each re-analysis
+                  uses {CREDIT_COST.reanalysis} (or your last one).{" "}
                   Counted over the last 30 days: each one frees up 30 days after you use it. Reopening a search
                   or analysis you&apos;ve already run is free. Past your plan, searches are{" "}
                   {formatCents(SEARCH_PRICE)} and re-analyses {formatCents(REANALYSIS_PRICE)}, on a{" "}
@@ -139,8 +137,7 @@ export default async function AccountPage({ searchParams }) {
                     {PLANS.basic.name} — ${PLANS.basic.price / 100}/mo ({PLANS.basic.creditsPer30Days} credits)
                   </a>
                   <a href="/api/checkout?plan=advanced" className="btn btn-ghost">
-                    {PLANS.advanced.name} — ${PLANS.advanced.price / 100}/mo ({PLANS.advanced.searchesPer30Days}{" "}
-                    searches)
+                    {PLANS.advanced.name} — ${PLANS.advanced.price / 100}/mo ({PLANS.advanced.creditsPer30Days} credits)
                   </a>
                 </>
               )}
