@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { SignOutButton } from "@clerk/nextjs";
 import Nav from "../Nav";
-import { formatCents, getUserPlan, PLANS, REANALYSIS_PRICE, SEARCH_PRICE } from "../../lib/plans";
+import { CREDIT_COST, formatCents, getUserPlan, PLANS, REANALYSIS_PRICE, SEARCH_PRICE, TAB_HOLD } from "../../lib/plans";
 import { planUsage } from "../../lib/access";
 import { savedCard } from "../../lib/payments";
 import { ensureTables, sql } from "../../lib/db";
@@ -118,13 +118,17 @@ export default async function AccountPage({ searchParams }) {
             {usage && (
               <>
                 <ul className="usage-list">
-                  <UsageRow label="Searches" count={usage.searches} />
+                  {usage.credits && <UsageRow label="Credits" count={usage.credits} />}
+                  {usage.searches && <UsageRow label="Searches" count={usage.searches} />}
                   {usage.ai && <UsageRow label="AI analyses" count={usage.ai} />}
                 </ul>
                 <p className="panel-muted">
+                  {usage.credits &&
+                    `A search uses ${CREDIT_COST.search} credits and includes its first AI analysis; each re-analysis uses ${CREDIT_COST.reanalysis}. `}
                   Counted over the last 30 days: each one frees up 30 days after you use it. Reopening a search
                   or analysis you&apos;ve already run is free. Past your plan, searches are{" "}
-                  {formatCents(SEARCH_PRICE)} and analyses {formatCents(REANALYSIS_PRICE)}.
+                  {formatCents(SEARCH_PRICE)} and re-analyses {formatCents(REANALYSIS_PRICE)}, on a{" "}
+                  {formatCents(TAB_HOLD)} hold.
                 </p>
               </>
             )}
@@ -132,7 +136,7 @@ export default async function AccountPage({ searchParams }) {
               {!fullAccess && tier === "free" && (
                 <>
                   <a href="/api/checkout?plan=basic" className="btn">
-                    {PLANS.basic.name} — ${PLANS.basic.price / 100}/mo ({PLANS.basic.searchesPer30Days} searches)
+                    {PLANS.basic.name} — ${PLANS.basic.price / 100}/mo ({PLANS.basic.creditsPer30Days} credits)
                   </a>
                   <a href="/api/checkout?plan=advanced" className="btn btn-ghost">
                     {PLANS.advanced.name} — ${PLANS.advanced.price / 100}/mo ({PLANS.advanced.searchesPer30Days}{" "}

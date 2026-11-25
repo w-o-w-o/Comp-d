@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Nav from "./Nav";
-import { PLANS, REANALYSIS_PRICE, SEARCH_PRICE, TAB_HOLD } from "../lib/plans";
+import { CREDIT_COST, PLANS, REANALYSIS_PRICE, SEARCH_PRICE, TAB_HOLD } from "../lib/plans";
 
 const usd = (cents) => `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`;
 
@@ -127,10 +127,12 @@ const plans = [
     period: "/month",
     blurb: "For renters and buyers actively searching.",
     features: [
-      `${PLANS.basic.searchesPer30Days} searches a month`,
-      `1 AI analysis per search, +${usd(REANALYSIS_PRICE)} per re-analysis`,
+      `${PLANS.basic.creditsPer30Days} credits a month, spent however you like`,
+      `A search uses ${CREDIT_COST.search} credits and includes its first AI analysis`,
+      `A re-analysis uses ${CREDIT_COST.reanalysis} credit`,
       `${PLANS.basic.commutesPerSearch} commute checks per search`,
     ],
+    note: `That's up to ${PLANS.basic.creditsPer30Days / CREDIT_COST.search} searches, or fewer searches and more re-analyses: ${usd((PLANS.basic.creditsPer30Days * REANALYSIS_PRICE) / CREDIT_COST.reanalysis)} of pay-per-search value.`,
     cta: `Get ${PLANS.basic.name}`,
     href: "/api/checkout?plan=basic",
     featured: true,

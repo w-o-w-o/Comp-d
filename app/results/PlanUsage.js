@@ -11,6 +11,15 @@ function part(count, noun) {
 
 export function planUsageText(usage) {
   if (!usage) return null;
+  // Basic: one pool of credits.
+  if (usage.credits) {
+    const c = usage.credits;
+    const next = c.max - c.used < 5 && c.nextFree ? ` More free up ${shortDate(c.nextFree)}.` : "";
+    return (
+      `${usage.plan} plan: ${part(c, "credits")} left. A search uses 5 (with its first AI analysis), ` +
+      `a re-analysis uses 1. Each frees up 30 days after you use it.${next}`
+    );
+  }
   const parts = [part(usage.searches, "searches"), usage.ai && part(usage.ai, "AI analyses")].filter(Boolean);
   // When something is nearly used up, say when the next one frees up.
   const low = [usage.searches, usage.ai].filter((c) => c && c.max - c.used <= 3 && c.nextFree);

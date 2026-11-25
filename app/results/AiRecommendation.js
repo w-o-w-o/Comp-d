@@ -326,6 +326,10 @@ function AnalysisCostNote({ access }) {
     text = `New analyses use 1 of your ${left} remaining this month. Reopening one you've already run is free.`;
   } else if (access.aiIncludedLeft) {
     text = "Your first analysis is included with this search.";
+  } else if (access.usage?.credits && access.usage.credits.max > access.usage.credits.used) {
+    // Basic: re-analyses come out of the plan's credits.
+    const c = access.usage.credits;
+    text = `Re-analyses use 1 credit: ${c.max - c.used} of ${c.max} left. Reopening one you've already run is free.`;
   } else if (access.tab) {
     const closes = new Date(access.tab.closesAt).toLocaleString("en-US", {
       weekday: "short",
