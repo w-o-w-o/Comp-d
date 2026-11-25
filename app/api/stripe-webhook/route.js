@@ -1,26 +1,35 @@
 import { cleanSecret, saveSubscription, stripe } from "../../../lib/stripe";
 import { completeCheckout } from "../../../lib/payments";
 
-const webhookSecret = cleanSecret(process.env.STRIPE_WEBHOOK_SECRET);
+// Signing secrets of the webhook destinations that may call this route.
+// COMPD_STRIPE_WEBHOOK_SECRET is our own; STRIPE_WEBHOOK_SECRET may be set by
+// Vercel's Stripe integration for its own destination. Either one is accepted.
+const webhookSecrets = [process.env.COMPD_STRIPE_WEBHOOK_SECRET, process.env.STRIPE_WEBHOOK_SECRET]
+  .map(cleanSecret)
+  .filter(Boolean);
 
 // POST /api/stripe-webhook
 // Stripe calls this when a subscription starts, changes, renews, or ends, so
 // plans stay correct even when users manage billing in Stripe's portal.
 export async function POST(request) {
-  if (!stripe || !webhookSecret) {
+  if (!stripe || webhookSecrets.length === 0) {
     return Response.json({ error: "Webhook not configured." }, { status: 503 });
   }
 
+  // The signature check needs the exact raw body.
+  const body = await request.text();
+  const signature = request.headers.get("stripe-signature");
   let event;
-  try {
-    // The signature check needs the exact raw body.
-    event = stripe.webhooks.constructEvent(
-      await request.text(),
-      request.headers.get("stripe-signature"),
-      webhookSecret
-    );
-  } catch (err) {
-    console.error("Stripe webhook signature check failed:", err.message);
+  for (const secret of webhookSecrets) {
+    try {
+      event = stripe.webhooks.constructEvent(body, signature, secret);
+      break;
+    } catch {
+      // Try the next secret.
+    }
+  }
+  if (!event) {
+    console.error("Stripe webhook signature check failed for every configured secret.");
     return Response.json({ error: "Invalid signature." }, { status: 400 });
   }
 
