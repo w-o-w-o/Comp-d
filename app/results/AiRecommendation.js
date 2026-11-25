@@ -388,11 +388,15 @@ function AmenityList({ amenities, custom, mode }) {
   if (!items.length) return null;
   const found = items.filter((f) => f.status !== "unknown");
   if (!found.length) {
-    const what = [
-      amenities?.features && "Laundry, utilities, parking and pets",
-      custom?.items?.length && (amenities?.features ? "your own priorities" : "Your own priorities"),
-    ].filter(Boolean);
-    return <p className="panel-muted amenity-none">{what.join(" and ")}: not found online.</p>;
+    // "Garage and fenced yard: not found online."
+    const names = (custom?.items || []).map((c) => c.priority);
+    const customText = names.length > 3 ? "your own priorities" : names.join(names.length === 2 ? " and " : ", ");
+    const what = [amenities?.features && "Laundry, utilities, parking and pets", customText].filter(Boolean).join(" and ");
+    return (
+      <p className="panel-muted amenity-none">
+        {what.charAt(0).toUpperCase() + what.slice(1)}: not found online.
+      </p>
+    );
   }
   const sources = [...new Set([...(amenities?.sources || []), ...(custom?.sources || [])])].slice(0, 6);
   return (
