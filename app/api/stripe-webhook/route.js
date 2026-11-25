@@ -1,11 +1,13 @@
-import { saveSubscription, stripe } from "../../../lib/stripe";
+import { cleanSecret, saveSubscription, stripe } from "../../../lib/stripe";
 import { completeCheckout } from "../../../lib/payments";
+
+const webhookSecret = cleanSecret(process.env.STRIPE_WEBHOOK_SECRET);
 
 // POST /api/stripe-webhook
 // Stripe calls this when a subscription starts, changes, renews, or ends, so
 // plans stay correct even when users manage billing in Stripe's portal.
 export async function POST(request) {
-  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
+  if (!stripe || !webhookSecret) {
     return Response.json({ error: "Webhook not configured." }, { status: 503 });
   }
 
@@ -15,7 +17,7 @@ export async function POST(request) {
     event = stripe.webhooks.constructEvent(
       await request.text(),
       request.headers.get("stripe-signature"),
-      process.env.STRIPE_WEBHOOK_SECRET
+      webhookSecret
     );
   } catch (err) {
     console.error("Stripe webhook signature check failed:", err.message);
