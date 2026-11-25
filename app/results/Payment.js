@@ -27,7 +27,8 @@ export function usePaymentInfo() {
 // it right here; otherwise (or if the bank wants confirmation) it opens
 // Stripe's checkout page, which saves the card for next time.
 // `purchase`: { kind, lat, lng, mode, label, returnTo }.
-export default function PayButton({ purchase, price, onPaid, children }) {
+// `hold` ({ each }): the amount is a hold for a re-analysis tab, not a charge.
+export default function PayButton({ purchase, price, onPaid, hold = null, children }) {
   const info = usePaymentInfo();
   const [step, setStep] = useState("idle"); // idle | confirm | paying
   const [error, setError] = useState(null);
@@ -67,12 +68,19 @@ export default function PayButton({ purchase, price, onPaid, children }) {
     <div className="pay">
       {step === "confirm" ? (
         <div className="pay-confirm">
-          <p>
-            Charge <strong>{dollars(price)}</strong> to {cardLabel(card)}?
-          </p>
+          {hold ? (
+            <p>
+              Hold <strong>{dollars(price)}</strong> on {cardLabel(card)}? You&apos;ll be charged only{" "}
+              {dollars(hold.each)} per re-analysis you run, in one payment; the rest of the hold is released.
+            </p>
+          ) : (
+            <p>
+              Charge <strong>{dollars(price)}</strong> to {cardLabel(card)}?
+            </p>
+          )}
           <div className="pay-actions">
             <button type="button" className="btn btn-small" onClick={pay}>
-              Confirm {dollars(price)}
+              {hold ? `Confirm hold` : `Confirm ${dollars(price)}`}
             </button>
             <button type="button" className="pref-remove" onClick={() => setStep("idle")}>
               Cancel
@@ -95,7 +103,10 @@ export default function PayButton({ purchase, price, onPaid, children }) {
       )}
       {!card && info && step !== "confirm" && (
         <p className="panel-muted pay-note">
-          You&apos;ll pay on Stripe&apos;s secure page. Your card is saved with Stripe so next time it&apos;s one click.
+          {hold
+            ? `You'll confirm the ${dollars(price)} hold on Stripe's secure page; only what you use is charged. `
+            : "You'll pay on Stripe's secure page. "}
+          Your card is saved with Stripe so next time it&apos;s one click.
         </p>
       )}
       {error && <p className="panel-error">{error}</p>}
@@ -110,7 +121,7 @@ export function SearchPaywall({ comps, purchase }) {
       <p className="paywall-title">{comps.message || "Unlock this search to see its homes."}</p>
       <ul className="paywall-list">
         <li>Every home for {purchase.mode === "buy" ? "sale" : "rent"} in your radius, for 7 days</li>
-        <li>1 AI analysis (more for $0.50 each)</li>
+        <li>1 AI analysis (more for $0.50 each, charged together)</li>
         <li>3 commute checks</li>
       </ul>
       <PayButton purchase={{ ...purchase, kind: "search" }} price={comps.payment.price} onPaid={comps.reload}>

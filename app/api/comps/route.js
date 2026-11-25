@@ -5,6 +5,7 @@ import { loadComps } from "../../../lib/comps";
 import { getUserPlan } from "../../../lib/plans";
 import { commuteLimitFor, ensureSearchAccess, PaymentRequired, planUsage, searchKeyFor } from "../../../lib/access";
 import { demoAt } from "../../../lib/demo";
+import { tabSummary } from "../../../lib/tabs";
 import { FETCH_RADII_MILES } from "../../results/geo";
 
 // GET /api/comps?lat=..&lng=..&radius=5&mode=rent|buy&address=..
@@ -55,7 +56,9 @@ export async function GET(request) {
       ...(demo && { listingsCenter: demoWeek.center, excludeAddress: demoWeek.address }),
     });
     // After unlocking, so this search is already counted.
-    const usage = demo ? null : await planUsage(userId, access);
+    const [usage, tab] = demo || access.fullAccess
+      ? [null, null]
+      : await Promise.all([planUsage(userId, access), tabSummary(userId)]);
     return Response.json({
       mode,
       fetchRadius: radius,
@@ -69,6 +72,7 @@ export async function GET(request) {
         aiIncludedLeft: unlocked.pass ? !unlocked.pass.ai_included_used : unlocked.source !== "demo",
         commuteLimit: commuteLimitFor(access, { demo }),
         usage,
+        tab,
       },
     });
   } catch (err) {

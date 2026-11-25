@@ -7,17 +7,30 @@ import { formatCents, getUserPlan, PLANS, REANALYSIS_PRICE, SEARCH_PRICE } from 
 import { planUsage } from "../../lib/access";
 import { savedCard } from "../../lib/payments";
 import { ensureTables, sql } from "../../lib/db";
+import { chargedTabs, tabSummary } from "../../lib/tabs";
 
 const BRANDS = { visa: "Visa", mastercard: "Mastercard", amex: "Amex", discover: "Discover" };
 const shortDate = (d) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
+// Searches, older one-off re-analyses, and charged re-analysis tabs, newest first.
 async function recentPurchases(userId) {
   if (!sql) return [];
   await ensureTables();
-  return sql`
-    SELECT id, kind, amount_cents, created_at FROM purchases
-    WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 5`;
+  const [bought, tabs] = await Promise.all([
+    sql`
+      SELECT id, kind, amount_cents, created_at FROM purchases
+      WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 5`,
+    chargedTabs(userId),
+  ]);
+  return [
+    ...bought,
+    ...tabs.map((t) => ({ id: `tab-${t.id}`, kind: "tab", amount_cents: t.charged_cents, created_at: t.closed_at })),
+  ]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 5);
 }
+
+const PURCHASE_LABELS = { search: "Search", reanalysis: "AI re-analysis", tab: "AI re-analyses (tab)" };
 
 export const metadata = { title: "My account — Comp'd" };
 
@@ -46,6 +59,12 @@ const BILLING_MESSAGES = {
 
 const longDate = (d) =>
   new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+// When a tab closes, as "in about 5 hours" (the server doesn't know the
+// visitor's time zone, so no clock time).
+function closesIn(d) {
+  const hours = Math.max(1, Math.round((new Date(d).getTime() - Date.now()) / 3_600_000));
+  return `in about ${hours} ${hours === 1 ? "hour" : "hours"}`;
+}
 
 export default async function AccountPage({ searchParams }) {
   // Sends logged-out visitors to the log-in page, then back here afterwards.
@@ -55,9 +74,10 @@ export default async function AccountPage({ searchParams }) {
   const access = await getUserPlan(userId);
   const { tier, plan, subscription, fullAccess } = access;
   const usage = await planUsage(userId, access);
-  const [card, purchases] = await Promise.all([
+  const [card, purchases, tab] = await Promise.all([
     subscription?.stripe_customer_id ? savedCard(subscription.stripe_customer_id).catch(() => null) : null,
     recentPurchases(userId),
+    fullAccess ? null : tabSummary(userId),
   ]);
   const user = await currentUser();
   const email = user.primaryEmailAddress?.emailAddress;
@@ -138,6 +158,13 @@ export default async function AccountPage({ searchParams }) {
               ) : (
                 <p>No card saved yet. Your first payment saves one with Stripe for one-click searches.</p>
               )}
+              {tab && (
+                <p className="tab-note">
+                  <strong>Open tab: {formatCents(tab.usedCents)}</strong> of AI re-analyses so far. We&apos;re holding{" "}
+                  {formatCents(tab.holdCents)} on your card and will charge only the {formatCents(tab.usedCents)} {closesIn(tab.closesAt)} (or sooner if the tab fills
+                  up); the rest is released.
+                </p>
+              )}
               <p className="panel-muted">
                 Questions about a charge? See our <Link href="/refunds">refund policy</Link>.
               </p>
@@ -150,7 +177,7 @@ export default async function AccountPage({ searchParams }) {
                 <ul className="purchase-list">
                   {purchases.map((p) => (
                     <li key={p.id}>
-                      <span>{p.kind === "search" ? "Search" : "AI re-analysis"}</span>
+                      <span>{PURCHASE_LABELS[p.kind] || "Purchase"}</span>
                       <span>{formatCents(p.amount_cents)}</span>
                       <span className="panel-muted">{shortDate(p.created_at)}</span>
                     </li>

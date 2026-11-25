@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Nav from "../Nav";
-import { formatCents, PLANS, REANALYSIS_PRICE, SEARCH_PRICE } from "../../lib/plans";
+import { formatCents, PLANS, REANALYSIS_PRICE, SEARCH_PRICE, TAB_HOLD, TAB_HOURS } from "../../lib/plans";
 
 export const metadata = { title: "Refund policy — Comp'd" };
 
@@ -29,6 +29,18 @@ export default function RefundsPage() {
             <li>an AI analysis you paid for failed and didn&apos;t run.</li>
           </ul>
           <p>Ask within 14 days of the charge.</p>
+        </section>
+
+        <section className="card">
+          <h2>How re-analyses are charged (the tab)</h2>
+          <p>
+            Re-analyses go on a tab so you don&apos;t get a separate small charge for each one. When you start a tab,
+            we place a temporary hold of {formatCents(TAB_HOLD)} on your card. That isn&apos;t a charge: your bank
+            shows it as pending. We charge only for the re-analyses you run ({formatCents(REANALYSIS_PRICE)} each), in
+            one payment, {TAB_HOURS} hours after the tab opens or as soon as it&apos;s used up, whichever comes first.
+            The rest of the hold is released, and if you don&apos;t run any, the whole hold is released and
+            you&apos;re not charged. Your bank may take a few days to remove a released hold.
+          </p>
         </section>
 
         <section className="card">

@@ -13,6 +13,7 @@ import { distanceMiles, fetchRadiusFor } from "../../results/geo";
 import { defaultFilters, matchesFilters, medianPricePerSqft, parseFilters } from "../../results/quality";
 import { claimAnalysis, ensureSearchAccess, PaymentRequired, planUsage, searchKeyFor } from "../../../lib/access";
 import { demoAt } from "../../../lib/demo";
+import { tabSummary } from "../../../lib/tabs";
 import {
   checkListing,
   describePreferences,
@@ -219,8 +220,10 @@ export async function POST(request) {
       claim: () => claimAnalysis(userId, access, searchKey, { demo }),
     });
     // The plan's count after this analysis, so the page stays up to date.
-    const usage = demoWeek ? null : await planUsage(userId, access);
-    return Response.json({ ...result, usage });
+    const [usage, tab] = demoWeek || access.fullAccess
+      ? [null, null]
+      : await Promise.all([planUsage(userId, access), tabSummary(userId)]);
+    return Response.json({ ...result, usage, tab });
   } catch (err) {
     if (err instanceof PaymentRequired) {
       return Response.json({ error: err.message, payment: err.payment }, { status: 402 });

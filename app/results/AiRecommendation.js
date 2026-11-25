@@ -6,6 +6,8 @@ import AiPreferences from "./AiPreferences";
 import PayButton from "./Payment";
 import { AMENITY_FEATURES, sourceName } from "./amenities";
 
+const dollars = (cents) => `$${(cents / 100).toFixed(2)}`;
+
 const RATING_LABELS = {
   "good deal": "Good deal",
   fair: "Fairly priced",
@@ -214,7 +216,9 @@ export default function AiRecommendation({
           )}
           {ai.payment ? (
             <div className="ai-payment">
-              <p className={ai.payment.kind === "reanalysis" ? "panel-muted" : "panel-error"}>{ai.payment.message}</p>
+              <p className={["reanalysis", "tab"].includes(ai.payment.kind) ? "panel-muted" : "panel-error"}>
+                {ai.payment.message}
+              </p>
               {ai.payment.kind === "reanalysis" && purchase && (
                 <PayButton
                   purchase={{ ...purchase, kind: "reanalysis" }}
@@ -222,6 +226,16 @@ export default function AiRecommendation({
                   onPaid={run}
                 >
                   Re-analyze for
+                </PayButton>
+              )}
+              {ai.payment.kind === "tab" && purchase && (
+                <PayButton
+                  purchase={{ ...purchase, kind: "tab" }}
+                  price={ai.payment.price}
+                  hold={{ each: ai.payment.each }}
+                  onPaid={run}
+                >
+                  Start a tab: hold
                 </PayButton>
               )}
             </div>
@@ -301,16 +315,23 @@ function AnalysisCostNote({ access }) {
     text = "The standard analysis is free in the demo. With your own priorities or filters: 1 custom analysis this week.";
   } else if (access.source === "full") {
     text = null;
-  } else if (access.usage?.ai) {
+  } else if (access.usage?.ai && access.usage.ai.max > access.usage.ai.used) {
     // Pro: new analyses come out of the plan's monthly count.
-    const left = Math.max(0, access.usage.ai.max - access.usage.ai.used);
-    text = left
-      ? `New analyses use 1 of your ${left} remaining this month. Reopening one you've already run is free.`
-      : "You've used this month's plan analyses, so new ones cost $0.50. Reopening one you've already run is free.";
+    const left = access.usage.ai.max - access.usage.ai.used;
+    text = `New analyses use 1 of your ${left} remaining this month. Reopening one you've already run is free.`;
   } else if (access.aiIncludedLeft) {
     text = "Your first analysis is included with this search.";
+  } else if (access.tab) {
+    const closes = new Date(access.tab.closesAt).toLocaleString("en-US", {
+      weekday: "short",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    text =
+      `New analyses are $0.50, added to your tab: ${dollars(access.tab.usedCents)} so far, ` +
+      `charged ${closes} or when it reaches ${dollars(access.tab.holdCents)}. Reopening one you've already run is free.`;
   } else {
-    text = "New analyses cost $0.50. Reopening one you've already run is free.";
+    text = "New analyses are $0.50 each, added to a tab and charged together. Reopening one you've already run is free.";
   }
   return text ? <p className="panel-muted pay-note">{text}</p> : null;
 }

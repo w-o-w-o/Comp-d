@@ -1,7 +1,8 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { sql } from "../../../lib/db";
 import { getPass, searchKeyFor } from "../../../lib/access";
-import { getUserPlan } from "../../../lib/plans";
+import { getUserPlan, REANALYSIS_PRICE } from "../../../lib/plans";
+import { getOpenTab } from "../../../lib/tabs";
 import { chargeSavedCard, checkoutFor, PRODUCTS, savedCard } from "../../../lib/payments";
 import { stripe } from "../../../lib/stripe";
 
@@ -28,7 +29,7 @@ async function customerId(userId) {
 export async function GET() {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "Please log in." }, { status: 401 });
-  const prices = { search: PRODUCTS.search.price, reanalysis: PRODUCTS.reanalysis.price };
+  const prices = { search: PRODUCTS.search.price, reanalysis: PRODUCTS.reanalysis.price, tabHold: PRODUCTS.tab.price };
   if (!stripe || !sql) return Response.json({ card: null, prices, available: false });
   try {
     const card = await savedCard(await customerId(userId));
@@ -39,7 +40,8 @@ export async function GET() {
   }
 }
 
-// POST /api/purchase { kind: "search"|"reanalysis", lat, lng, mode, label, returnTo, useSavedCard }
+// POST /api/purchase { kind: "search"|"tab", lat, lng, mode, label, returnTo, useSavedCard }
+// ("tab" puts a hold on the card for re-analyses; "reanalysis" is the older one-off charge.)
 // -> { ok: true } when paid with the saved card, or { checkoutUrl } to pay on Stripe.
 // The page only calls this after the user confirmed the amount.
 export async function POST(request) {
@@ -63,9 +65,14 @@ export async function POST(request) {
   if (access.fullAccess) return Response.json({ ok: true });
   // Don't charge for a search that's already open.
   if (kind === "search" && (await getPass(userId, search.key))) return Response.json({ ok: true });
-  // A re-analysis needs the search itself to be open.
-  if (kind === "reanalysis" && !(await getPass(userId, search.key))) {
+  // Re-analyses need the search itself to be open.
+  if ((kind === "reanalysis" || kind === "tab") && !(await getPass(userId, search.key))) {
     return Response.json({ error: "Unlock this search first." }, { status: 409 });
+  }
+  // Don't hold the card again while a tab with room is open.
+  if (kind === "tab") {
+    const tab = await getOpenTab(userId);
+    if (tab && tab.hold_cents - tab.used_cents >= REANALYSIS_PRICE) return Response.json({ ok: true });
   }
 
   try {

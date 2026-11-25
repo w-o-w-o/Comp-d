@@ -237,6 +237,8 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
   const access = comps.status === "ready" ? comps.data.access : null;
   // What's left on the user's plan; a new analysis returns the updated count.
   const usage = (ai.status === "ready" && ai.data?.usage) || access?.usage || null;
+  // The open re-analysis tab, if any (a new analysis returns its new total).
+  const tab = ai.status === "ready" && ai.data && "tab" in ai.data ? ai.data.tab : access?.tab || null;
 
   function pickPreset(miles) {
     setRadiusMiles(miles);
@@ -268,7 +270,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
       onSelect={setSelectedId}
       canRun={comps.status === "ready" && shown.length > 0}
       locked={comps.status === "locked"}
-      access={access && { ...access, usage }}
+      access={access && { ...access, usage, tab }}
       purchase={purchase}
       priorities={priorities}
       prefsCtx={{ estimate: estimateAmount, radiusMiles }}
