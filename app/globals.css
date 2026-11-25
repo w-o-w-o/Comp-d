@@ -919,6 +919,17 @@ h3 {
   margin-top: 8px;
 }
 
+/* Cancel plan / Keep my plan on the account page. */
+.plan-cancel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.plan-cancel .pay-confirm p {
+  margin: 0 0 8px;
+}
+
 /* The open re-analysis tab on the account page. */
 .tab-note {
   padding: 10px 12px;

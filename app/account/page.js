@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { SignOutButton } from "@clerk/nextjs";
 import Nav from "../Nav";
+import PlanCancel from "./PlanCancel";
 import { CREDIT_COST, formatCents, getUserPlan, PLANS, REANALYSIS_PRICE, SEARCH_PRICE, TAB_HOLD } from "../../lib/plans";
 import { planUsage } from "../../lib/access";
 import { savedCard } from "../../lib/payments";
@@ -142,9 +143,16 @@ export default async function AccountPage({ searchParams }) {
                 </>
               )}
               {!fullAccess && tier !== "free" && (
-                <a href="/api/billing-portal" className="btn btn-ghost">
-                  Change plan or manage billing
-                </a>
+                <>
+                  <a href="/api/billing-portal" className="btn btn-ghost">
+                    Change plan or manage billing
+                  </a>
+                  <PlanCancel
+                    planName={plan.name}
+                    endsOn={subscription?.current_period_end ? longDate(subscription.current_period_end) : null}
+                    canceling={Boolean(subscription?.cancel_at_period_end)}
+                  />
+                </>
               )}
             </div>
           </div>
