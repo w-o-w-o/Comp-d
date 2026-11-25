@@ -103,10 +103,10 @@ export const PREFERENCES = [
   amenityPreference("parking", "Parking", "parking", "Parking for tenants"),
   amenityPreference("pets", "Pets allowed", "pets", "Pets allowed"),
   {
+    // Buy only: year built is missing for most rentals (about 3 in 4).
     id: "newer",
     label: "Newer building",
-    modes: ["rent", "buy"],
-    hint: "Year built is missing for many rentals; those count as unknown.",
+    modes: ["buy"],
     control: () => ({ type: "range", min: 1900, max: 2025, step: 5, label: "Built in or after", format: String }),
     defaultValue: () => 2000,
     summary: (v) => `Built ${v} or later`,
@@ -130,15 +130,6 @@ export const PREFERENCES = [
     summary: (v) => (v === 0 ? "No HOA" : `HOA under ${money(v)}/mo`),
     // No fee listed usually means no HOA.
     check: (l, v) => (l.hoaFee ?? 0) <= v,
-  },
-  {
-    id: "close",
-    label: "Close to this address",
-    modes: ["rent", "buy"],
-    control: (mode, { radiusMiles }) => ({ type: "range", min: 0.25, max: Math.max(0.5, radiusMiles), step: 0.25, label: "Within", format: (v) => `${v} mi` }),
-    defaultValue: (mode, { radiusMiles }) => Math.min(1, radiusMiles),
-    summary: (v) => `Within ${v} mi`,
-    check: (l, v) => l.distance <= v,
   },
   {
     id: "commute",
@@ -194,16 +185,11 @@ export const PREFERENCES = [
       label: "At least",
       options: WALK_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
     }),
+    // "Above average" separates homes in suburbs; in dense college towns
+    // nearly every home passes it, so "Most walkable" is the useful choice there.
     defaultValue: () => WALK_OPTIONS[0].value,
     summary: (v) => `${WALK_OPTIONS.find((o) => o.value === v)?.label || "Walkable"} or better`,
     check: (l, v) => (l.walkScore == null ? null : l.walkScore >= v),
-  },
-  {
-    id: "crime",
-    label: "Lower crime",
-    modes: ["rent", "buy"],
-    hint: "FBI crime rates cover a whole city or township, so this weighs the area against state and U.S. rates. It can't tell homes in the same city apart.",
-    summary: () => "Below-average reported crime",
   },
   {
     id: "fresh",

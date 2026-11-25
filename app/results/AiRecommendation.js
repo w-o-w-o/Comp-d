@@ -248,7 +248,9 @@ export default function AiRecommendation({
         </>
       )}
 
-      {ai.status === "loading" && !ai.stale && <LoadingMessage mode={mode} />}
+      {ai.status === "loading" && !ai.stale && (
+        <LoadingMessage mode={mode} custom={ranWith?.payload?.custom?.length > 0} />
+      )}
 
       {ai.status === "error" && !ai.stale && (
         <>
@@ -308,7 +310,8 @@ function AnalysisCostNote({ access }) {
 }
 
 // Steps shown while the analysis runs. Rentals take longer: the AI also looks
-// up amenities on the web.
+// up amenities on the web. With the user's own priorities it looks those up
+// too (rent or buy).
 const LOADING_STEPS = {
   rent: [
     "Comparing rents in your radius…",
@@ -320,15 +323,30 @@ const LOADING_STEPS = {
     "Writing up the picks…",
   ],
   buy: ["Comparing homes in your radius…", "Checking prices per square foot…", "Weighing your priorities…", "Writing up the picks…"],
+  buyCustom: [
+    "Comparing homes in your radius…",
+    "Picking the strongest candidates…",
+    "Looking up your own priorities on listing pages…",
+    "Reading home details and descriptions…",
+    "Weighing what it found against your priorities…",
+    "Writing up the picks…",
+  ],
 };
 
-function LoadingMessage({ mode }) {
+function LoadingMessage({ mode, custom = false }) {
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(t);
   }, []);
-  const steps = LOADING_STEPS[mode] || LOADING_STEPS.buy;
+  const steps =
+    mode === "rent"
+      ? custom
+        ? [...LOADING_STEPS.rent.slice(0, 4), "Looking up your own priorities…", ...LOADING_STEPS.rent.slice(4)]
+        : LOADING_STEPS.rent
+      : custom
+        ? LOADING_STEPS.buyCustom
+        : LOADING_STEPS.buy;
   // Move on every 12 seconds, then stay on the last step.
   const step = steps[Math.min(steps.length - 1, Math.floor(seconds / 12))];
   return (
@@ -339,7 +357,9 @@ function LoadingMessage({ mode }) {
         <p className="panel-muted">
           {mode === "rent"
             ? "Rentals take 1–3 minutes: the AI checks listing pages for amenities."
-            : "This usually takes under a minute."}{" "}
+            : custom
+              ? "This takes 1–2 minutes: the AI checks listing pages for your own priorities."
+              : "This usually takes under a minute."}{" "}
           {seconds >= 5 && `${seconds}s`}
         </p>
       </div>
@@ -349,15 +369,32 @@ function LoadingMessage({ mode }) {
 
 const STATUS_MARK = { yes: "✓", no: "✗", unknown: "?" };
 
-// What the AI found on the web about one home's amenities: a row of chips,
-// and a collapsed list with each detail and the pages it came from.
-function AmenityList({ amenities }) {
-  if (!amenities?.features) return null;
-  const items = AMENITY_FEATURES.map((f) => ({ ...f, ...amenities.features[f.key] }));
+const chipText = (s) => (s.length > 28 ? `${s.slice(0, 27)}…` : s);
+
+// What the AI found on the web about one home: its amenities (rentals) and
+// the user's own priorities. A row of chips, and a collapsed list with each
+// detail and the pages it came from.
+function AmenityList({ amenities, custom, mode }) {
+  const items = [
+    ...(amenities?.features ? AMENITY_FEATURES.map((f) => ({ ...f, ...amenities.features[f.key] })) : []),
+    ...(custom?.items || []).map((c) => ({
+      key: `custom:${c.priority}`,
+      label: c.priority,
+      short: chipText(c.priority),
+      status: c.status,
+      detail: c.detail,
+    })),
+  ];
+  if (!items.length) return null;
   const found = items.filter((f) => f.status !== "unknown");
   if (!found.length) {
-    return <p className="panel-muted amenity-none">Laundry, utilities, parking and pets: not found online.</p>;
+    const what = [
+      amenities?.features && "Laundry, utilities, parking and pets",
+      custom?.items?.length && (amenities?.features ? "your own priorities" : "Your own priorities"),
+    ].filter(Boolean);
+    return <p className="panel-muted amenity-none">{what.join(" and ")}: not found online.</p>;
   }
+  const sources = [...new Set([...(amenities?.sources || []), ...(custom?.sources || [])])].slice(0, 6);
   return (
     <div className="amenities">
       <ul className="amenity-chips">
@@ -379,10 +416,10 @@ function AmenityList({ amenities }) {
             </li>
           ))}
         </ul>
-        {amenities.sources?.length > 0 && (
+        {sources.length > 0 && (
           <p className="amenity-sources">
             From{" "}
-            {amenities.sources.map((url, i) => (
+            {sources.map((url, i) => (
               <span key={url}>
                 {i > 0 && ", "}
                 <a href={url} target="_blank" rel="noopener noreferrer nofollow">
@@ -390,7 +427,7 @@ function AmenityList({ amenities }) {
                 </a>
               </span>
             ))}
-            . Check with the landlord before you sign.
+            . {mode === "buy" ? "Confirm with the listing agent." : "Check with the landlord before you sign."}
           </p>
         )}
       </details>
@@ -399,7 +436,7 @@ function AmenityList({ amenities }) {
 }
 
 function AiResult({ result, listingsById, mode, onSelect }) {
-  const { verdict, marketContext, recommendations, caveats, priorityNotes = [], amenities } = result;
+  const { verdict, marketContext, recommendations, caveats, priorityNotes = [], amenities, customFindings } = result;
 
   return (
     <div className="ai-result">
@@ -407,7 +444,7 @@ function AiResult({ result, listingsById, mode, onSelect }) {
       <div className={`ai-verdict ai-verdict-${verdict.rating.replace(/\s+/g, "-")}`}>
         <span className="ai-verdict-label">This property: {RATING_LABELS[verdict.rating]}</span>
         <p>{verdict.summary}</p>
-        <AmenityList amenities={amenities?.subject} />
+        <AmenityList amenities={amenities?.subject} custom={customFindings?.subject} mode={mode} />
       </div>
 
       {/* 2. Recommended homes */}
@@ -437,7 +474,11 @@ function AiResult({ result, listingsById, mode, onSelect }) {
                 </ul>
                 {r.tradeoff && <span className="ai-tradeoff">Trade-off: {r.tradeoff}</span>}
               </button>
-              <AmenityList amenities={amenities?.byListing?.[r.listingId]} />
+              <AmenityList
+                amenities={amenities?.byListing?.[r.listingId]}
+                custom={customFindings?.byListing?.[r.listingId]}
+                mode={mode}
+              />
             </li>
           );
         })}

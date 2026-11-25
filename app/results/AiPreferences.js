@@ -165,7 +165,7 @@ export default function AiPreferences({ priorities, mode, ctx }) {
           value={draft}
           maxLength={MAX_CUSTOM_LENGTH}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={mode === "rent" ? "Add your own, e.g. pet friendly, parking" : "Add your own, e.g. garage, single story"}
+          placeholder={mode === "rent" ? "Add your own, e.g. dishwasher, balcony" : "Add your own, e.g. garage, finished basement"}
           aria-label="Add your own priority"
           disabled={current.custom.length >= MAX_CUSTOM}
         />
@@ -185,11 +185,10 @@ export default function AiPreferences({ priorities, mode, ctx }) {
           ))}
         </div>
       )}
-      {current.custom.length > 0 && (
-        <p className="panel-muted pref-hint">
-          The AI checks your own priorities against the listing data and tells you if the data doesn&apos;t cover them.
-        </p>
-      )}
+      <p className="panel-muted pref-hint">
+        The AI looks up features like these on listing sites for the homes it considers. For a place you want to be
+        near (campus, work), use the Commute box instead: it measures real travel time.
+      </p>
     </div>
   );
 }
