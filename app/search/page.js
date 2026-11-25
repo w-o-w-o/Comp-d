@@ -29,6 +29,23 @@ export default async function SearchPage() {
         <MapsProvider>
           <SearchBar />
         </MapsProvider>
+        <p className="search-pricing">
+          Each search is $2.50 and includes an AI analysis and 3 commute checks, or{" "}
+          <Link href="/#pricing">get a monthly plan</Link>.
+        </p>
+
+        <div className="try-free">
+          <div>
+            <strong>Not sure yet? Try it free.</strong>
+            <span>
+              Explore a real search we&apos;ve picked for this week, with the AI analysis already run. It changes
+              every week.
+            </span>
+          </div>
+          <Link href="/results?demo=1" className="btn btn-ghost">
+            Try it free
+          </Link>
+        </div>
 
         {recent.length > 0 && (
           <section className="recent-searches" aria-labelledby="recent-title">

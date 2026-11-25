@@ -8,7 +8,9 @@ import { areaProfile, floodZones, schoolDistances, walkabilities } from "../../.
 import { getUserPlan } from "../../../lib/plans";
 import { parseNearby } from "../../../lib/nearby";
 import { distanceMiles, fetchRadiusFor } from "../../results/geo";
-import { matchesFilters, medianPricePerSqft, parseFilters } from "../../results/quality";
+import { defaultFilters, matchesFilters, medianPricePerSqft, parseFilters } from "../../results/quality";
+import { claimAnalysis, ensureSearchAccess, PaymentRequired, searchKeyFor } from "../../../lib/access";
+import { demoAt } from "../../../lib/demo";
 import {
   checkListing,
   describePreferences,
@@ -76,22 +78,23 @@ export async function POST(request) {
     return Response.json({ error: "Invalid radius." }, { status: 400 });
   }
 
-  const { tier, plan } = await getUserPlan(userId);
-  if (plan.aiPerDay === 0) {
-    return Response.json(
-      { error: "AI recommendations are included with Basic and Advanced.", upgradeTo: "basic" },
-      { status: 402 }
-    );
-  }
+  const access = await getUserPlan(userId);
+  const { plan } = access;
+  const demoWeek = await demoAt(lat, lng);
 
   try {
+    // Only for a search the user has unlocked (or this week's demo), before
+    // anything is loaded, so a locked search can't trigger data lookups.
+    if (!demoWeek) await ensureSearchAccess(userId, access, searchKeyFor(lat, lng, mode));
+
     const { estimate, listings } = await loadComps({
       lat,
       lng,
-      fetchRadius: fetchRadiusFor(radiusMiles),
+      fetchRadius: demoWeek ? 5 : fetchRadiusFor(radiusMiles),
       mode,
-      address,
+      address: demoWeek ? demoWeek.address : address,
       userId,
+      ...(demoWeek && { listingsCenter: demoWeek.center, excludeAddress: demoWeek.address }),
     });
 
     // Same homes the user sees: inside the radius and matching their filters.
@@ -180,6 +183,17 @@ export async function POST(request) {
           }
         : null;
 
+    // In the demo, the analysis with no priorities and the default filters
+    // (and at most the preset commute) is the shared, free one.
+    const defaults = defaultFilters(estimate?.subject);
+    const demo = demoWeek && {
+      week: demoWeek.week,
+      isDefault:
+        !priorities &&
+        JSON.stringify(filters ?? defaults) === JSON.stringify(defaults) &&
+        (!commute || commute.destination === demoWeek.commuteTo),
+    };
+    const searchKey = searchKeyFor(lat, lng, mode);
     const result = await recommend({
       mode,
       subjectAddress: address,
@@ -192,15 +206,13 @@ export async function POST(request) {
       subjectExtras,
       radiusMiles,
       userId,
-      dailyLimit: plan.aiPerDay,
+      dailyLimit: access.fullAccess ? null : plan.aiPerDay,
+      claim: () => claimAnalysis(userId, access, searchKey, { demo }),
     });
     return Response.json(result);
   } catch (err) {
-    if (err instanceof AiLimitError && tier === "basic") {
-      return Response.json(
-        { error: `${err.message} Advanced includes more each day.`, upgradeTo: "advanced" },
-        { status: 429 }
-      );
+    if (err instanceof PaymentRequired) {
+      return Response.json({ error: err.message, payment: err.payment }, { status: 402 });
     }
     if (err instanceof BudgetError || err instanceof AiLimitError) {
       return Response.json({ error: err.message }, { status: 429 });

@@ -900,6 +900,156 @@ h3 {
   text-align: center;
 }
 
+/* Paying for a search or a re-analysis */
+.paywall {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--accent-soft);
+}
+
+.paywall-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.paywall-list {
+  margin: 8px 0 12px;
+  padding-left: 18px;
+  font-size: 0.88rem;
+}
+
+.paywall-plans {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+}
+
+.paywall-plans a,
+.search-pricing a,
+.pricing-demo a,
+.demo-banner a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.pay-btn {
+  width: 100%;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pay-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.pay-confirm p {
+  margin: 0 0 8px;
+}
+
+.pay-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pay-note {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+}
+
+.ai-payment {
+  margin-top: 10px;
+}
+
+.ai-payment p {
+  margin: 0 0 8px;
+}
+
+/* Free demo */
+.demo-banner {
+  display: grid;
+  gap: 2px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  font-size: 0.85rem;
+}
+
+.demo-banner strong {
+  color: var(--accent);
+}
+
+.search-pricing {
+  margin: 12px 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.try-free {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px dashed var(--accent);
+  border-radius: 14px;
+}
+
+.try-free > div {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.try-free .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.try-free span {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  .try-free {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.plan-note {
+  margin: 10px 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.pricing-demo {
+  margin: 20px 0 0;
+  text-align: center;
+  color: var(--muted);
+}
+
+.purchase-list {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 0.88rem;
+}
+
+.purchase-list li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+}
+
 /* About this area */
 
 .area-facts {

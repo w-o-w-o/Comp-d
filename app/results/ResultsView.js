@@ -16,7 +16,8 @@ import {
 import HomePhoto from "./HomePhoto";
 import { PLACE_FIELDS, recallPlace, rememberPlace } from "../maps/placeLookup";
 import useComparables from "./useComparables";
-import AiRecommendation, { UpgradeButton, useAiCollapsed, useRecommendation } from "./AiRecommendation";
+import AiRecommendation, { useAiCollapsed, useRecommendation } from "./AiRecommendation";
+import { SearchPaywall } from "./Payment";
 import AreaInsights, { useArea } from "./AreaInsights";
 import CommuteBox, { formatCommute, useCommute } from "./Commute";
 import { useNearbyPlaces } from "./NearbyPlaces";
@@ -50,7 +51,7 @@ const PRESETS_SORTED = [...RADIUS_PRESETS_MILES].sort((a, b) => a - b);
 //   "results"  — estimate and nearby listings load, as price pins and photo cards
 // Searches reopened from history skip straight to "results" with their saved
 // radius and rent/buy choice. Every search that reaches "results" is saved.
-export default function ResultsView({ address, placeId, initialRadius, initialMode, fromHistory }) {
+export default function ResultsView({ address, placeId, initialRadius, initialMode, fromHistory, demo = false }) {
   const places = useMapsLibrary("places");
   const [lookup, setLookup] = useState({ status: "loading" });
   const [stage, setStage] = useState(fromHistory ? "results" : "arriving");
@@ -61,6 +62,25 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
   const [frameRequest, setFrameRequest] = useState(0);
 
   useEffect(() => {
+    // The demo's home comes from Comp'd (it changes weekly, and differs for
+    // renting and buying), not a lookup.
+    if (demo) {
+      let cancelled = false;
+      fetch(`/api/demo?mode=${mode}`)
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`demo ${r.status}`))))
+        .then((d) => {
+          if (!cancelled) {
+            setLookup({ status: "ready", position: { lat: d.lat, lng: d.lng }, formattedAddress: d.address, demoInfo: d });
+          }
+        })
+        .catch((err) => {
+          console.error("Demo lookup failed:", err);
+          if (!cancelled) setLookup({ status: "error" });
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
     if (!places) return;
     let cancelled = false;
 
@@ -103,7 +123,9 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
     return () => {
       cancelled = true;
     };
-  }, [places, address, placeId]);
+    // mode only matters for the demo (its home differs for renting and buying).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [places, address, placeId, demo, demo && mode]);
 
   const ready = lookup.status === "ready";
   const comps = useComparables({
@@ -171,7 +193,8 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
   const estimateAmount = comps.status === "ready" ? comps.data.estimate?.amount ?? null : null;
   const dataFetchedAt = comps.status === "ready" ? comps.data.listingsFetchedAt ?? null : null;
   useEffect(() => {
-    if (!ready || stage !== "results" || comps.status !== "ready") return;
+    // The demo isn't one of the user's own searches, so it isn't saved.
+    if (demo || !ready || stage !== "results" || comps.status !== "ready") return;
     const timer = setTimeout(() => {
       fetch("/api/history", {
         method: "POST",
@@ -191,7 +214,26 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
       }).catch((err) => console.error("Couldn't save search:", err));
     }, 1000);
     return () => clearTimeout(timer);
-  }, [ready, stage, comps.status, address, placeId, lookup, mode, radiusMiles, estimateAmount, nearbyCount, dataFetchedAt]);
+  }, [demo, ready, stage, comps.status, address, placeId, lookup, mode, radiusMiles, estimateAmount, nearbyCount, dataFetchedAt]);
+
+  // What a payment on this page is for, and where Stripe returns the user
+  // (straight back to these results).
+  const purchase = ready
+    ? {
+        lat: lookup.position.lat,
+        lng: lookup.position.lng,
+        mode,
+        label: `${lookup.formattedAddress} (${mode === "buy" ? "buying" : "renting"})`,
+        returnTo: `/results?${new URLSearchParams({
+          address: address || lookup.formattedAddress,
+          ...(placeId && { placeId }),
+          radius: String(Math.round(radiusMiles * 100) / 100),
+          mode,
+          from: "history",
+        })}`,
+      }
+    : null;
+  const access = comps.status === "ready" ? comps.data.access : null;
 
   function pickPreset(miles) {
     setRadiusMiles(miles);
@@ -222,6 +264,9 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
       mode={mode}
       onSelect={setSelectedId}
       canRun={comps.status === "ready" && shown.length > 0}
+      locked={comps.status === "locked"}
+      access={access}
+      purchase={purchase}
       priorities={priorities}
       prefsCtx={{ estimate: estimateAmount, radiusMiles }}
       collapsed={wide && aiCollapsed}
@@ -398,11 +443,17 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             ← Back to search
           </Link>
 
+          {demo && lookup.demoInfo && <DemoBanner info={lookup.demoInfo} />}
+
           <div className="panel-section">
-            <p className="eyebrow">Comparing</p>
+            <p className="eyebrow">{demo ? "Free demo · comparing" : "Comparing"}</p>
             <h1>{lookup.formattedAddress}</h1>
             <div className="panel-row">{modeControls}</div>
-            <Estimate comps={comps} mode={mode} />
+            {comps.status === "locked" && purchase ? (
+              <SearchPaywall comps={comps} purchase={purchase} />
+            ) : (
+              <Estimate comps={comps} mode={mode} />
+            )}
           </div>
 
           <AreaInsights
@@ -412,7 +463,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             subjectBeds={comps.status === "ready" ? comps.data.estimate?.subject?.beds : null}
           />
 
-          <CommuteBox commute={commute} />
+          {comps.status === "ready" && <CommuteBox commute={commute} demo={demo} />}
 
           <div className="panel-section">{radiusControls}</div>
 
@@ -501,17 +552,32 @@ function RadiusControls({ radiusMiles, onPreset }) {
   );
 }
 
+// The free demo's note: what it is, when it changes, and how to search your own.
+function DemoBanner({ info }) {
+  // The switch is at midnight UTC on Monday; show that date, not the local evening before.
+  const ends = new Date(info.endsAt).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  return (
+    <div className="demo-banner">
+      <strong>Free demo</strong>
+      <span>
+        This week&apos;s address, picked by Comp&apos;d. A new one arrives {ends}. You get one custom AI analysis
+        this week; <Link href="/search">search your own address</Link> for the full thing.
+      </span>
+    </div>
+  );
+}
+
 function Estimate({ comps, mode }) {
   if (comps.status === "loading" || comps.status === "idle") {
     return <p className="panel-muted">Loading property data…</p>;
   }
-  if (comps.status === "error") {
-    return (
-      <>
-        <p className="panel-error">{comps.message}</p>
-        {comps.upgradeTo && <UpgradeButton tier={comps.upgradeTo} />}
-      </>
-    );
+  if (comps.status === "error" || comps.status === "locked") {
+    return <p className="panel-error">{comps.message}</p>;
   }
   const estimate = comps.data.estimate;
   if (!estimate?.amount) {

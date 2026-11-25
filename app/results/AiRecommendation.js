@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatFacts, formatMiles, formatPrice } from "./format";
 import AiPreferences from "./AiPreferences";
+import PayButton from "./Payment";
 
 const RATING_LABELS = {
   "good deal": "Good deal",
@@ -23,6 +24,8 @@ export function useRecommendation({ position, address, mode, radiusMiles, commut
   // The priorities and filters the last analysis used (for Cancel). Kept here,
   // not in the panel, so it survives the panel being hidden behind a tab.
   const [ranWith, setRanWith] = useState(null);
+  // Whether a new analysis has run on this page (so the included one is used).
+  const [ranNew, setRanNew] = useState(false);
   const commuteKey = commute ? `${commute.destination}|${commute.travelMode}` : "";
   const filterKeyOf = (f) => (f ? `${f.beds.join(",")}/${f.types.join(",")}` : "");
   const keyFor = (p, f) =>
@@ -33,6 +36,8 @@ export function useRecommendation({ position, address, mode, radiusMiles, commut
 
   async function run(snapshot = null) {
     const forKey = searchKey;
+    const previous = state.status === "loading" ? { status: "idle" } : state;
+    const previousRanWith = ranWith;
     setRanWith(snapshot);
     setState({ status: "loading", forKey });
     try {
@@ -52,10 +57,17 @@ export function useRecommendation({ position, address, mode, radiusMiles, commut
         }),
       });
       const body = await res.json();
-      if (!res.ok) {
-        setState({ status: "error", message: body.error, upgradeTo: body.upgradeTo, forKey });
+      if (res.status === 402 && body.payment) {
+        // Needs paying for (or the demo's limit): keep showing the last
+        // analysis, and offer payment for these settings.
+        setRanWith(previousRanWith);
+        setState({ ...previous, payment: { ...body.payment, message: body.error, forKey } });
+      } else if (!res.ok) {
+        setState({ status: "error", message: body.error, forKey });
       } else {
         setState({ status: "ready", data: body, forKey });
+        // A new (not saved) analysis uses up the one a search includes.
+        if (body.cached === false) setRanNew(true);
       }
     } catch {
       setState({ status: "error", message: "Couldn't reach the AI. Try again.", forKey });
@@ -68,7 +80,9 @@ export function useRecommendation({ position, address, mode, radiusMiles, commut
   // Would these priorities and filters bring back the last analysis
   // (everything else unchanged)?
   const matchesLast = (p, f) => state.status !== "idle" && state.forKey === keyFor(p, f);
-  return { ...state, stale, picks, run, matchesLast, ranWith };
+  // A payment asked for the current settings (it no longer applies once they change).
+  const payment = state.payment?.forKey === searchKey ? state.payment : null;
+  return { ...state, stale, picks, run, matchesLast, ranWith, payment, ranNew };
 }
 
 // Whether the AI panel is minimized to a bubble, remembered in this browser.
@@ -102,6 +116,9 @@ export default function AiRecommendation({
   filters,
   onFilters,
   filtersControl,
+  locked = false,
+  access = null,
+  purchase = null,
 }) {
   const hasResult = ai.status !== "idle";
   // Once there's a result, the priorities fold away behind a button.
@@ -185,16 +202,38 @@ export default function AiRecommendation({
         </button>
       )}
 
-      {(ai.status === "idle" || ai.stale) && (
+      {locked && <p className="panel-muted">Unlock this search to analyze it with AI.</p>}
+
+      {!locked && (ai.status === "idle" || ai.stale) && (
         <>
           {ai.stale && (
             <p className="panel-muted">
               Your priorities, homes to compare, radius, rent/buy choice, or commute changed since the last analysis.
             </p>
           )}
-          <button type="button" className="btn ai-run" onClick={run} disabled={!canRun}>
-            {ai.stale ? "Re-analyze" : "Analyze with AI"}
-          </button>
+          {ai.payment ? (
+            <div className="ai-payment">
+              <p className={ai.payment.kind === "reanalysis" ? "panel-muted" : "panel-error"}>{ai.payment.message}</p>
+              {ai.payment.kind === "reanalysis" && purchase && (
+                <PayButton
+                  purchase={{ ...purchase, kind: "reanalysis" }}
+                  price={ai.payment.price}
+                  onPaid={run}
+                >
+                  Re-analyze for
+                </PayButton>
+              )}
+            </div>
+          ) : (
+            <>
+              <button type="button" className="btn ai-run" onClick={run} disabled={!canRun}>
+                {ai.stale ? "Re-analyze" : "Analyze with AI"}
+              </button>
+              <AnalysisCostNote
+                access={access && { ...access, aiIncludedLeft: access.aiIncludedLeft && !ai.ranNew }}
+              />
+            </>
+          )}
           {canCancel && (
             <button
               type="button"
@@ -217,13 +256,9 @@ export default function AiRecommendation({
       {ai.status === "error" && !ai.stale && (
         <>
           <p className="panel-error">{ai.message}</p>
-          {ai.upgradeTo ? (
-            <UpgradeButton tier={ai.upgradeTo} />
-          ) : (
-            <button type="button" className="chip" onClick={run}>
-              Try again
-            </button>
-          )}
+          <button type="button" className="chip" onClick={run}>
+            Try again
+          </button>
         </>
       )}
 
@@ -258,14 +293,21 @@ function DetailList({ title, items, muted = false }) {
   );
 }
 
-// Plain <a>: checkout is a server redirect to Stripe, not a page.
-export function UpgradeButton({ tier }) {
-  const label = tier === "advanced" ? "Upgrade to Advanced — $20/mo" : "Upgrade to Basic — $10/mo";
-  return (
-    <a href={`/api/checkout?plan=${tier}`} className="btn upgrade-btn">
-      {label}
-    </a>
-  );
+// What the next new analysis costs, under the Analyze button. Reopening an
+// analysis already run with the same settings is always free.
+function AnalysisCostNote({ access }) {
+  if (!access) return null;
+  let text = null;
+  if (access.demo) {
+    text = "The standard analysis is free in the demo. With your own priorities or filters: 1 custom analysis this week.";
+  } else if (access.source === "full" || access.tier === "advanced") {
+    text = null;
+  } else if (access.aiIncludedLeft) {
+    text = "Your first analysis is included with this search.";
+  } else {
+    text = "New analyses cost $0.50. Reopening one you've already run is free.";
+  }
+  return text ? <p className="panel-muted pay-note">{text}</p> : null;
 }
 
 function AiResult({ result, listingsById, mode, onSelect }) {

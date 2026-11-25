@@ -3,7 +3,21 @@ import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { SignOutButton } from "@clerk/nextjs";
 import Nav from "../Nav";
-import { getUserPlan, searchesLeft } from "../../lib/plans";
+import { formatCents, getUserPlan, REANALYSIS_PRICE, SEARCH_PRICE } from "../../lib/plans";
+import { planSearchesUsed } from "../../lib/access";
+import { savedCard } from "../../lib/payments";
+import { ensureTables, sql } from "../../lib/db";
+
+const BRANDS = { visa: "Visa", mastercard: "Mastercard", amex: "Amex", discover: "Discover" };
+const shortDate = (d) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+async function recentPurchases(userId) {
+  if (!sql) return [];
+  await ensureTables();
+  return sql`
+    SELECT id, kind, amount_cents, created_at FROM purchases
+    WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 5`;
+}
 
 export const metadata = { title: "My account — Comp'd" };
 
@@ -21,7 +35,11 @@ export default async function AccountPage({ searchParams }) {
   if (!userId) redirect("/sign-in?redirect_url=/account");
   const { billing } = await searchParams;
   const { tier, plan, subscription, fullAccess } = await getUserPlan(userId);
-  const freeSearchesLeft = await searchesLeft(userId, plan);
+  const planSearches = tier !== "free" && !fullAccess ? await planSearchesUsed(userId, tier) : null;
+  const [card, purchases] = await Promise.all([
+    subscription?.stripe_customer_id ? savedCard(subscription.stripe_customer_id).catch(() => null) : null,
+    recentPurchases(userId),
+  ]);
   const user = await currentUser();
   const email = user.primaryEmailAddress?.emailAddress;
   const name = user.firstName || email;
@@ -51,21 +69,27 @@ export default async function AccountPage({ searchParams }) {
                 {subscription.status === "past_due" && " — payment past due, please update your card"}
               </p>
             )}
-            {freeSearchesLeft != null && (
+            {!fullAccess && tier === "free" && (
               <p>
-                You have {freeSearchesLeft} of {plan.searchesPer30Days} free searches left
-                (each search counts for 30 days). AI recommendations come with Basic and
-                Advanced.
+                Each search is {formatCents(SEARCH_PRICE)} and includes 1 AI analysis and 3 commute checks.
+                Extra analyses are {formatCents(REANALYSIS_PRICE)}.
+              </p>
+            )}
+            {planSearches != null && (
+              <p>
+                {planSearches} of {plan.searchesPer30Days} searches used in the last 30 days
+                {tier === "advanced" ? " (fair-use limit)" : ""}. After that, searches are{" "}
+                {formatCents(SEARCH_PRICE)} each.
               </p>
             )}
             <div className="plan-actions">
               {!fullAccess && tier === "free" && (
                 <>
                   <a href="/api/checkout?plan=basic" className="btn">
-                    Upgrade to Basic — $10/mo
+                    Basic — $10/mo (6 searches)
                   </a>
                   <a href="/api/checkout?plan=advanced" className="btn btn-ghost">
-                    Advanced — $20/mo
+                    Unlimited — $25/mo
                   </a>
                 </>
               )}
@@ -76,6 +100,36 @@ export default async function AccountPage({ searchParams }) {
               )}
             </div>
           </div>
+
+          {!fullAccess && (
+            <div className="card">
+              <h3>Payment</h3>
+              {card ? (
+                <p>
+                  Card on file: <strong>{BRANDS[card.brand] || card.brand} •••• {card.last4}</strong>, saved securely
+                  with Stripe. You confirm every charge before it&apos;s made.
+                </p>
+              ) : (
+                <p>No card saved yet. Your first payment saves one with Stripe for one-click searches.</p>
+              )}
+              {subscription?.stripe_customer_id && (
+                <a href="/api/billing-portal" className="btn btn-ghost">
+                  {card ? "Update or remove card" : "Manage billing"}
+                </a>
+              )}
+              {purchases.length > 0 && (
+                <ul className="purchase-list">
+                  {purchases.map((p) => (
+                    <li key={p.id}>
+                      <span>{p.kind === "search" ? "Search" : "AI re-analysis"}</span>
+                      <span>{formatCents(p.amount_cents)}</span>
+                      <span className="panel-muted">{shortDate(p.created_at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           <div className="card">
             <h3>Your details</h3>

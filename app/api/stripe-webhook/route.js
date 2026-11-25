@@ -1,4 +1,5 @@
 import { saveSubscription, stripe } from "../../../lib/stripe";
+import { completeCheckout } from "../../../lib/payments";
 
 // POST /api/stripe-webhook
 // Stripe calls this when a subscription starts, changes, renews, or ends, so
@@ -28,6 +29,10 @@ export async function POST(request) {
       case "customer.subscription.deleted":
         // Re-read from Stripe so events arriving out of order can't save stale data.
         await saveSubscription(await stripe.subscriptions.retrieve(event.data.object.id));
+        break;
+      // A pay-per-search or re-analysis paid on Stripe Checkout.
+      case "checkout.session.completed":
+        if (event.data.object.mode === "payment") await completeCheckout(event.data.object.id);
         break;
       default:
         break;

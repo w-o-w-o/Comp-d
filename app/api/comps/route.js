@@ -2,11 +2,14 @@ import { auth } from "@clerk/nextjs/server";
 import { sql } from "../../../lib/db";
 import { BudgetError } from "../../../lib/rentcast";
 import { loadComps } from "../../../lib/comps";
-import { checkSearchAllowance, getUserPlan, PlanLimitError } from "../../../lib/plans";
+import { getUserPlan } from "../../../lib/plans";
+import { commuteLimitFor, ensureSearchAccess, PaymentRequired, searchKeyFor } from "../../../lib/access";
+import { demoAt } from "../../../lib/demo";
 import { FETCH_RADII_MILES } from "../../results/geo";
 
 // GET /api/comps?lat=..&lng=..&radius=5&mode=rent|buy&address=..
-// Returns the property's estimated rent or value plus active listings nearby.
+// Returns the property's estimated rent or value plus active listings nearby,
+// for a search the user has unlocked (402 with a price when they haven't).
 export async function GET(request) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "Please log in." }, { status: 401 });
@@ -33,22 +36,40 @@ export async function GET(request) {
   }
 
   try {
-    // Free accounts get a few distinct searches; repeats of one don't count.
-    const { plan } = await getUserPlan(userId);
-    await checkSearchAllowance(userId, plan, `${mode}|${lat.toFixed(3)},${lng.toFixed(3)}|${radius}`);
+    // This week's demo is open to every account; anything else needs an
+    // unlocked search (paid, or one of the plan's searches).
+    const demoWeek = await demoAt(lat, lng);
+    const demo = Boolean(demoWeek);
+    const access = await getUserPlan(userId);
+    const unlocked = demo ? { source: "demo" } : await ensureSearchAccess(userId, access, searchKeyFor(lat, lng, mode));
 
     const { estimate, listings, listingsFetchedAt } = await loadComps({
       lat,
       lng,
-      fetchRadius: radius,
+      // The demo always uses its own (shared, weekly) listings around the city point.
+      fetchRadius: demo ? 5 : radius,
       mode,
-      address,
+      address: demo ? demoWeek.address : address,
       userId,
+      ...(demo && { listingsCenter: demoWeek.center, excludeAddress: demoWeek.address }),
     });
-    return Response.json({ mode, fetchRadius: radius, estimate, listings, listingsFetchedAt });
+    return Response.json({
+      mode,
+      fetchRadius: radius,
+      estimate,
+      listings,
+      listingsFetchedAt,
+      access: {
+        source: unlocked.source,
+        demo,
+        tier: access.tier,
+        aiIncludedLeft: unlocked.pass ? !unlocked.pass.ai_included_used : unlocked.source !== "demo",
+        commuteLimit: commuteLimitFor(access, { demo }),
+      },
+    });
   } catch (err) {
-    if (err instanceof PlanLimitError) {
-      return Response.json({ error: err.message, upgradeTo: err.upgradeTo }, { status: 402 });
+    if (err instanceof PaymentRequired) {
+      return Response.json({ error: err.message, payment: err.payment }, { status: 402 });
     }
     if (err instanceof BudgetError) {
       return Response.json({ error: err.message }, { status: 429 });

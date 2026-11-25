@@ -77,17 +77,18 @@ const reasons = [
 
 const plans = [
   {
-    name: "Free",
-    price: "$0",
-    period: "",
-    blurb: "Try it on the place you're eyeing.",
+    name: "Pay per search",
+    price: "$2.50",
+    period: "/search",
+    blurb: "For checking the one place you're eyeing.",
     features: [
-      "3 area searches every 30 days",
-      "Rent & value estimates",
-      "Nearby listings on the map, with photos",
+      "Every nearby home for rent or sale, for 7 days",
+      "1 AI analysis included (more for $0.50 each)",
+      "3 commute checks",
+      "Card saved with Stripe for one-click searches",
     ],
-    cta: "Start free",
-    href: "/sign-up",
+    cta: "Search an address",
+    href: "/search",
   },
   {
     name: "Basic",
@@ -95,26 +96,27 @@ const plans = [
     period: "/month",
     blurb: "For renters and buyers actively searching.",
     features: [
-      "Unlimited area searches",
-      "AI recommendations (3 per day)",
-      "Better-deal picks highlighted on the map",
+      "6 searches a month",
+      "1 AI analysis per search (more for $0.50 each)",
+      "3 commute checks per search",
     ],
     cta: "Get Basic",
     href: "/api/checkout?plan=basic",
     featured: true,
   },
   {
-    name: "Advanced",
-    price: "$20",
+    name: "Unlimited",
+    price: "$25",
     period: "/month",
     blurb: "For heavy searchers, investors, and realtors.",
     features: [
-      "Everything in Basic",
-      "AI recommendations (10 per day)",
-      "Built for comparing many homes and areas",
+      "Unlimited searches*",
+      "Unlimited AI analyses*",
+      "10 commute checks per search",
     ],
-    cta: "Get Advanced",
+    cta: "Get Unlimited",
     href: "/api/checkout?plan=advanced",
+    note: "*Fair use: up to 40 searches a month and 15 AI analyses a day, to keep out automated abuse.",
   },
 ];
 
@@ -135,7 +137,7 @@ export default function Home() {
               deal and what to look at instead.
             </p>
             <div className="hero-actions">
-              <Link href="/sign-up" className="btn">
+              <Link href="/results?demo=1" className="btn">
                 Try it free
               </Link>
               <a href="#how" className="btn btn-ghost">
@@ -249,7 +251,7 @@ export default function Home() {
         <section id="pricing" className="section">
           <div className="wrap">
             <h2 className="section-title">Simple pricing</h2>
-            <p className="section-sub">Start free. Upgrade when you&apos;re ready.</p>
+            <p className="section-sub">Pay for one search, or save with a monthly plan.</p>
             <div className="plans">
               {plans.map((p) => (
                 <div className={`card plan${p.featured ? " plan-featured" : ""}`} key={p.name}>
@@ -269,16 +271,21 @@ export default function Home() {
                   <a href={p.href} className={`btn${p.featured ? "" : " btn-ghost"}`}>
                     {p.cta}
                   </a>
+                  {p.note && <p className="plan-note">{p.note}</p>}
                 </div>
               ))}
             </div>
+            <p className="pricing-demo">
+              Not sure yet? <Link href="/results?demo=1">Try a real search free</Link>. We pick a new address every
+              week.
+            </p>
           </div>
         </section>
 
         <section className="wrap closing">
           <h2>Your next home should be a sure thing.</h2>
           <p>Compare it before you commit.</p>
-          <Link href="/sign-up" className="btn">
+          <Link href="/results?demo=1" className="btn">
             Try Comp&apos;d free
           </Link>
         </section>

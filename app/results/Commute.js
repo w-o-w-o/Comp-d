@@ -32,6 +32,10 @@ export function useCommute({ subject, listings, mode }) {
   const [active, setActive] = useState(-1);
   // A check in progress or one that failed: { status, destination, travelMode, message }
   const [pending, setPending] = useState(null);
+  // From the server: this user's limit per search, and the demo's preset.
+  const [limit, setLimit] = useState(COMMUTE_LIMIT);
+  const [preset, setPreset] = useState(null);
+  const [loaded, setLoaded] = useState(false);
   const lat = subject?.lat;
   const lng = subject?.lng;
 
@@ -40,22 +44,40 @@ export function useCommute({ subject, listings, mode }) {
     setChecks([]);
     setActive(-1);
     setPending(null);
+    setLoaded(false);
+    setPreset(null);
     if (lat == null || lng == null) return;
     let cancelled = false;
     fetch(`/api/commutes?${new URLSearchParams({ lat: String(lat), lng: String(lng), mode })}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((body) => {
-        if (cancelled || !body?.checks?.length) return;
-        setChecks(body.checks);
-        setActive(body.checks.length - 1);
+        if (cancelled || !body) return;
+        if (Number.isInteger(body.limit)) setLimit(body.limit);
+        setPreset(body.preset || null);
+        if (body.checks?.length) {
+          setChecks(body.checks);
+          setActive(body.checks.length - 1);
+        }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => !cancelled && setLoaded(true));
     return () => {
       cancelled = true;
     };
   }, [lat, lng, mode]);
 
-  async function compute(destination, travelMode) {
+  // The demo's preset commute: worked out once (by the first visitor of the
+  // week) and then shared by everyone.
+  const hasListings = listings.length > 0;
+  useEffect(() => {
+    if (preset && loaded && routes && hasListings && checks.length === 0 && !pending) {
+      compute(preset, "DRIVING", { isPreset: true });
+    }
+    // compute is recreated each render; the conditions above are what matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset, loaded, routes, hasListings, checks.length]);
+
+  async function compute(destination, travelMode, { isPreset = false } = {}) {
     if (!routes || !subject || !destination.trim()) return;
     // Already checked: just show it again.
     const existing = checks.findIndex(
@@ -66,12 +88,14 @@ export function useCommute({ subject, listings, mode }) {
       setActive(existing);
       return;
     }
-    if (checks.length >= COMMUTE_LIMIT) {
+    if (!isPreset && checks.length >= limit) {
       setPending({
         status: "error",
         destination,
         travelMode,
-        message: `You've used all ${COMMUTE_LIMIT} commute checks for this search. Pick a saved one below.`,
+        message: limit
+          ? `You've used all ${limit} commute checks for this search. Pick a saved one below.`
+          : "The demo includes its preset commute. Search your own address for commute checks.",
       });
       return;
     }
@@ -147,7 +171,8 @@ export function useCommute({ subject, listings, mode }) {
       setPending(null);
       setActive(i);
     },
-    limit: COMMUTE_LIMIT,
+    limit,
+    preset,
     available: Boolean(routes),
   };
 }
@@ -160,7 +185,34 @@ export function formatCommute(minutes, travelMode, miles = null) {
   return `${time} ${verb}${miles != null ? ` · ${miles} mi` : ""}`;
 }
 
-export default function CommuteBox({ commute }) {
+export default function CommuteBox({ commute, demo = false }) {
+  if (demo) return <DemoCommute commute={commute} />;
+  return <CommuteSearch commute={commute} />;
+}
+
+// The demo shows its preset commute only.
+function DemoCommute({ commute }) {
+  const c = commute.checks[0];
+  const time = c && (formatCommute(c.subjectMinutes, c.travelMode, c.subjectMiles) || "No route found");
+  return (
+    <div className="panel-section panel-section-tight">
+      <Collapsible title="Commute" peek={time || "Working it out…"}>
+        {c ? (
+          <p className="panel-muted">
+            From this property: <strong>{time}</strong> to {c.destination}. Times also show on each listing.
+          </p>
+        ) : (
+          <p className="panel-muted ai-loading">Working out the commute to {commute.preset || "a nearby landmark"}…</p>
+        )}
+        <p className="panel-muted pref-hint">
+          The demo uses a preset destination. Your own searches include 3 commute checks to anywhere you choose.
+        </p>
+      </Collapsible>
+    </div>
+  );
+}
+
+function CommuteSearch({ commute }) {
   const [destination, setDestination] = useState(commute.destination || "");
   const [travelMode, setTravelMode] = useState(commute.travelMode || "DRIVING");
 

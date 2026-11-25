@@ -1,6 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { sql } from "../../../lib/db";
 import { getSavedNearby, parseNearby, saveNearby } from "../../../lib/nearby";
+import { demoAt } from "../../../lib/demo";
+
+// This week's demo address shares one set of counts across all visitors.
+const DEMO_OWNER = "demo";
+const ownerFor = async (userId, p) => ((await demoAt(p.lat, p.lng)) ? DEMO_OWNER : userId);
 
 function point(lat, lng) {
   const la = Number(lat);
@@ -19,7 +24,7 @@ export async function GET(request) {
   const params = request.nextUrl.searchParams;
   const p = point(params.get("lat"), params.get("lng"));
   if (!p) return Response.json({ error: "Invalid location." }, { status: 400 });
-  return Response.json({ data: await getSavedNearby(userId, p.lat, p.lng) });
+  return Response.json({ data: await getSavedNearby(await ownerFor(userId, p), p.lat, p.lng) });
 }
 
 // POST /api/nearby { lat, lng, data } -> saves counts the browser looked up.
@@ -37,6 +42,9 @@ export async function POST(request) {
   const p = point(body.lat, body.lng);
   const data = parseNearby(body.data);
   if (!p || !data) return Response.json({ error: "Invalid nearby data." }, { status: 400 });
-  await saveNearby(userId, p.lat, p.lng, data);
+  const owner = await ownerFor(userId, p);
+  // The demo's shared counts are saved once, by the first visitor of the week.
+  if (owner === DEMO_OWNER && (await getSavedNearby(owner, p.lat, p.lng))) return Response.json({ saved: false });
+  await saveNearby(owner, p.lat, p.lng, data);
   return Response.json({ saved: true });
 }
