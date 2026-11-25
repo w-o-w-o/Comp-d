@@ -10,8 +10,8 @@ export default function Nav() {
         </Link>
         <div className="nav-links">
           <Link href="/#how">How it works</Link>
-          <Link href="/#who">Who it&apos;s for</Link>
           <Link href="/#pricing">Pricing</Link>
+          <Link href="/#compared">What&apos;s compared</Link>
         </div>
         <div className="nav-auth">
           <Show when="signed-out">

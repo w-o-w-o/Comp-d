@@ -1,121 +1,151 @@
 import Link from "next/link";
 import Nav from "./Nav";
+import { PLANS, REANALYSIS_PRICE, SEARCH_PRICE, TAB_HOLD } from "../lib/plans";
+
+const usd = (cents) => `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`;
 
 const steps = [
   {
     title: "Enter an address",
-    text: "Paste in the house or rental you're looking at — or just the neighborhood you want to live in.",
+    text: "Type the house or rental you're looking at, and choose whether you're renting or buying.",
   },
   {
-    title: "Draw your search area",
-    text: "Choose a radius or neighborhood. Comp'd pulls every comparable home for sale or rent inside it.",
+    title: "Pick your search area",
+    text: "Drag the circle on the map or choose a radius from ½ to 5 miles. Comp'd pulls every home for rent or sale inside it.",
   },
   {
     title: "Set your priorities",
-    text: "Tell us what matters most — price, space, schools, commute — and we weight the comparison to match.",
+    text: "Budget, space, commute, in-unit laundry, schools: mark each as a must-have or nice-to-have, or type your own.",
   },
   {
     title: "Get a clear verdict",
-    text: "See whether the place is worth it, how it ranks against nearby options, and which homes beat it.",
-  },
-];
-
-const categories = [
-  { name: "Price & rent", detail: "Price per sq ft, rent per bedroom, recent sales" },
-  { name: "Space & layout", detail: "Square footage, bedrooms, bathrooms, lot size" },
-  { name: "Monthly costs", detail: "HOA fees, property taxes, utilities, insurance" },
-  { name: "Schools", detail: "Assigned schools and their ratings" },
-  { name: "Commute", detail: "Drive, transit, bike, and walk times to where you go" },
-  { name: "Safety", detail: "Neighborhood crime trends over time" },
-  { name: "Walkability", detail: "Groceries, parks, restaurants, and gyms nearby" },
-  { name: "Condition & age", detail: "Year built, renovations, appliances" },
-  { name: "Market trend", detail: "Whether prices in the area are rising or falling" },
-  { name: "Lifestyle fit", detail: "Parking, pets, laundry, outdoor space, noise" },
-];
-
-const audiences = [
-  {
-    who: "Renters",
-    text: "Find out if that apartment is fairly priced before you sign a 12-month lease — and see better units a few blocks away.",
-  },
-  {
-    who: "Home buyers",
-    text: "Know what a house is actually worth compared with recent sales nearby, so you can offer with confidence.",
-  },
-  {
-    who: "Sellers",
-    text: "See how your home stacks up against the competition and price it to sell — not sit.",
-  },
-  {
-    who: "Forever-home seekers",
-    text: "Weight the things that matter for the long haul — schools, space, commute — and find the place that fits for decades.",
-  },
-  {
-    who: "Realtors",
-    text: "Back up your recommendations with clean, data-driven comparisons you can share with clients in minutes.",
+    text: "The AI tells you if it's a good deal, fair, or overpriced, and which nearby homes are better value, with the facts behind every pick.",
   },
 ];
 
 const reasons = [
   {
     title: "Stop overpaying",
-    text: "Paying just $100 a month too much in rent adds up to $1,200 a year. One Comp'd report can catch that before you sign.",
-  },
-  {
-    title: "Hours of research in seconds",
-    text: "No more juggling a dozen listing tabs and spreadsheets. Comp'd gathers the comparisons and does the math for you.",
+    text: "Paying just $100 a month too much in rent adds up to $1,200 a year. One Comp'd search can catch that before you sign.",
   },
   {
     title: "Built around you",
-    text: "Generic estimates treat every buyer the same. Comp'd ranks homes by what you told it matters most.",
+    text: "No more juggling listing tabs and spreadsheets. Comp'd does the research in minutes and ranks homes by what you told it matters most.",
   },
   {
     title: "Negotiate with evidence",
-    text: "Walk into a negotiation with comparable listings and a clear value score, not just a gut feeling.",
+    text: "Walk in knowing the comparable prices, how long a home has been listed, and whether its price was cut.",
+  },
+  {
+    title: "Pay only for what you use",
+    text: `No subscription needed: ${usd(SEARCH_PRICE)} a search, charged once on a ${usd(TAB_HOLD)} hold. Plans save you more if you search a lot.`,
+  },
+];
+
+// What Comp'd actually compares, and where the data comes from.
+const categories = [
+  {
+    name: "Price & value",
+    detail: "Price per sq ft and per bedroom against nearby listings, the property's estimate, and the area's fair market rent",
+    source: "RentCast, HUD, Census",
+  },
+  {
+    name: "Space & layout",
+    detail: "Square footage, bedrooms, bathrooms, and lot size",
+    source: "RentCast",
+  },
+  {
+    name: "Monthly costs",
+    detail: "Estimated mortgage payment and HOA fees for buyers; rent per person and included utilities for renters",
+    source: "RentCast, listing pages",
+  },
+  {
+    name: "Rental amenities",
+    detail: "In-unit laundry, A/C, parking, pets, and whether heat, water, or Wi-Fi is included",
+    source: "Listing pages, linked",
+  },
+  {
+    name: "Your own priorities",
+    detail: 'Anything you type, like "dishwasher" or "garage", checked on each home\'s listing page',
+    source: "Listing pages, linked",
+  },
+  {
+    name: "Commute",
+    detail: "Drive, transit, bike, and walk times from each home to where you go",
+    source: "Google Maps",
+  },
+  {
+    name: "Neighborhood",
+    detail: "Groceries, parks, restaurants, and transit stops nearby, plus a walkability score",
+    source: "Google Maps, EPA",
+  },
+  {
+    name: "Schools",
+    detail: "Distance to the nearest public elementary, middle, and high school, and the school district",
+    source: "NCES",
+  },
+  {
+    name: "Flood risk",
+    detail: "The flood zone of each home, which can mean required flood insurance",
+    source: "FEMA",
+  },
+  {
+    name: "Safety",
+    detail: "Reported crime rates for the city, compared with state and U.S. rates",
+    source: "FBI",
+  },
+  {
+    name: "Market trend",
+    detail: "Whether rents and home values in the ZIP code are rising or falling, days listed, and price cuts",
+    source: "Zillow, RentCast",
+  },
+  {
+    name: "Building age",
+    detail: "Year built, for homes that list it",
+    source: "RentCast",
   },
 ];
 
 const plans = [
   {
-    name: "Pay per search",
-    price: "$2.50",
+    name: PLANS.free.name,
+    price: usd(SEARCH_PRICE),
     period: "/search",
     blurb: "For checking the one place you're eyeing.",
     features: [
-      "Every nearby home for rent or sale, for 7 days",
-      "1 AI analysis included (+$0.50 per re-analysis)",
-      "Paid with a $5 hold: you're charged once, only for what you use",
-      "3 commute checks",
-      "Card saved with Stripe for one-click searches",
+      "Every home for rent or sale in your radius, for 7 days",
+      `1 AI analysis included, +${usd(REANALYSIS_PRICE)} per re-analysis`,
+      `${PLANS.free.commutesPerSearch} commute checks`,
+      `Paid on a ${usd(TAB_HOLD)} hold: charged once, only for what you use`,
     ],
     cta: "Search an address",
     href: "/search",
   },
   {
-    name: "Basic",
-    price: "$15",
+    name: PLANS.basic.name,
+    price: usd(PLANS.basic.price),
     period: "/month",
     blurb: "For renters and buyers actively searching.",
     features: [
-      "10 searches a month",
-      "1 AI analysis per search (more for $0.50 each)",
-      "3 commute checks per search",
+      `${PLANS.basic.searchesPer30Days} searches a month`,
+      `1 AI analysis per search, +${usd(REANALYSIS_PRICE)} per re-analysis`,
+      `${PLANS.basic.commutesPerSearch} commute checks per search`,
     ],
-    cta: "Get Basic",
+    cta: `Get ${PLANS.basic.name}`,
     href: "/api/checkout?plan=basic",
     featured: true,
   },
   {
-    name: "Pro",
-    price: "$29",
+    name: PLANS.advanced.name,
+    price: usd(PLANS.advanced.price),
     period: "/month",
     blurb: "For heavy searchers, investors, and realtors.",
     features: [
-      "30 searches a month",
-      "60 AI analyses a month, for any of your searches",
-      "10 commute checks per search",
+      `${PLANS.advanced.searchesPer30Days} searches a month`,
+      `${PLANS.advanced.aiPer30Days} AI analyses a month, for any of your searches`,
+      `${PLANS.advanced.commutesPerSearch} commute checks per search`,
     ],
-    cta: "Get Pro",
+    cta: `Get ${PLANS.advanced.name}`,
     href: "/api/checkout?plan=advanced",
     note: "Your account page shows how many you have left. Reopening a search or analysis you've already run is free.",
   },
@@ -147,33 +177,28 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Mirrors the real AI result: a verdict, amenity chips, better deals. */}
           <div className="sample" aria-label="Example Comp'd result">
             <p className="sample-tag">Example result</p>
             <p className="sample-address">2-bed apartment · $1,850/mo</p>
             <p className="sample-meta">Compared with 42 rentals within 1 mile</p>
             <div className="verdict">
-              <span className="verdict-badge">Worth it</span>
+              <span className="verdict-badge">Good deal</span>
               <span>7% below similar rentals nearby</span>
             </div>
-            <ul className="scores">
-              <li>
-                <span>Price</span>
-                <span className="bar"><span style={{ width: "86%" }} /></span>
-              </li>
-              <li>
-                <span>Commute</span>
-                <span className="bar"><span style={{ width: "74%" }} /></span>
-              </li>
-              <li>
-                <span>Space</span>
-                <span className="bar"><span style={{ width: "58%" }} /></span>
-              </li>
-              <li>
-                <span>Walkability</span>
-                <span className="bar"><span style={{ width: "91%" }} /></span>
-              </li>
+            <ul className="sample-facts">
+              <li>$925 per bedroom, $140 under the area&apos;s fair market rent</li>
+              <li>18 min by transit to your office</li>
+              <li>Minimal flood risk · walkability 16 of 20</li>
             </ul>
-            <p className="sample-foot">3 nearby rentals score higher on space →</p>
+            <ul className="amenity-chips" aria-label="Amenities found online">
+              <li className="amenity-chip amenity-yes">✓ Laundry</li>
+              <li className="amenity-chip amenity-yes">✓ A/C</li>
+              <li className="amenity-chip amenity-yes">✓ Heat incl.</li>
+              <li className="amenity-chip amenity-no">✗ Parking</li>
+              <li className="amenity-chip amenity-unknown">? Pets</li>
+            </ul>
+            <p className="sample-foot">3 possibly better deals nearby →</p>
           </div>
         </section>
 
@@ -195,64 +220,10 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="section section-alt">
-          <div className="wrap">
-            <h2 className="section-title">Everything that matters, compared</h2>
-            <p className="section-sub">
-              Comp&apos;d looks well beyond the price tag. Every home is scored
-              across ten categories, and you decide how much each one counts.
-            </p>
-            <ul className="categories">
-              {categories.map((c) => (
-                <li key={c.name}>
-                  <strong>{c.name}</strong>
-                  <span>{c.detail}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <section id="who" className="section">
-          <div className="wrap">
-            <h2 className="section-title">Who it&apos;s for</h2>
-            <p className="section-sub">
-              Anyone making a decision about where to live or what a home is
-              worth.
-            </p>
-            <div className="audiences">
-              {audiences.map((a) => (
-                <div className="card" key={a.who}>
-                  <h3>{a.who}</h3>
-                  <p>{a.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="section section-alt">
-          <div className="wrap">
-            <h2 className="section-title">Why it&apos;s worth paying for</h2>
-            <p className="section-sub">
-              A home is the biggest expense most people have. A few dollars to
-              get it right pays for itself.
-            </p>
-            <div className="reasons">
-              {reasons.map((r) => (
-                <div key={r.title}>
-                  <h3>{r.title}</h3>
-                  <p>{r.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="pricing" className="section">
+        <section id="pricing" className="section section-alt">
           <div className="wrap">
             <h2 className="section-title">Simple pricing</h2>
-            <p className="section-sub">Pay for one search, or save with a monthly plan.</p>
+            <p className="section-sub">Pay as you go, or save with a monthly plan.</p>
             <div className="plans">
               {plans.map((p) => (
                 <div className={`card plan${p.featured ? " plan-featured" : ""}`} key={p.name}>
@@ -283,6 +254,43 @@ export default function Home() {
             <p className="pricing-demo">
               Cancel plans anytime. See our <Link href="/refunds">refund policy</Link>.
             </p>
+          </div>
+        </section>
+
+        <section className="section">
+          <div className="wrap">
+            <h2 className="section-title">Why it&apos;s worth paying for</h2>
+            <p className="section-sub">
+              A home is the biggest expense most people have. A few dollars to
+              get it right pays for itself.
+            </p>
+            <div className="reasons">
+              {reasons.map((r) => (
+                <div key={r.title}>
+                  <h3>{r.title}</h3>
+                  <p>{r.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="compared" className="section section-alt">
+          <div className="wrap">
+            <h2 className="section-title">Everything that matters, compared</h2>
+            <p className="section-sub">
+              Comp&apos;d looks well beyond the price tag, using public data and each home&apos;s own listing. You
+              choose which of these count, as must-haves or nice-to-haves.
+            </p>
+            <ul className="categories">
+              {categories.map((c) => (
+                <li key={c.name}>
+                  <strong>{c.name}</strong>
+                  <span>{c.detail}</span>
+                  <small>{c.source}</small>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 

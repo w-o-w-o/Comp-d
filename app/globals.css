@@ -2322,34 +2322,18 @@ h3 {
   font-size: 0.85rem;
 }
 
-.scores {
-  list-style: none;
-  margin: 18px 0 0;
-  padding: 0;
+/* The example result's facts and amenity chips. */
+.sample-facts {
+  margin: 16px 0 14px;
+  padding-left: 18px;
   display: grid;
-  gap: 10px;
-}
-
-.scores li {
-  display: grid;
-  grid-template-columns: 96px 1fr;
-  align-items: center;
+  gap: 6px;
   font-size: 0.9rem;
   color: var(--muted);
 }
 
-.bar {
-  height: 8px;
-  border-radius: 999px;
-  background: var(--bg-alt);
-  overflow: hidden;
-}
-
-.bar span {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--accent);
+.sample .amenity-chip {
+  font-size: 0.8rem;
 }
 
 .sample-foot {
@@ -2430,7 +2414,7 @@ h3 {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
 }
 
@@ -2451,18 +2435,15 @@ h3 {
   line-height: 1.4;
 }
 
-/* Who it's for */
-
-.audiences {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 16px;
-}
-
-@media (min-width: 1000px) {
-  .audiences {
-    grid-template-columns: repeat(5, 1fr);
-  }
+/* Where the data comes from, at the bottom of each category. */
+.categories small {
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 /* Why it's worth paying for */
