@@ -2369,6 +2369,16 @@ h3 {
   margin-top: 28px;
 }
 
+.hero-note {
+  margin: 12px 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.hero-note a {
+  color: var(--accent);
+}
+
 /* Example result card */
 
 .sample {

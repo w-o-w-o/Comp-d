@@ -15,6 +15,9 @@ export default function Nav() {
         </div>
         <div className="nav-auth">
           <Show when="signed-out">
+            <Link href="/search" className="nav-login">
+              Search
+            </Link>
             <Link href="/sign-in" className="nav-login">
               Log in
             </Link>

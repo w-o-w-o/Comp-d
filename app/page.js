@@ -170,13 +170,17 @@ export default function Home() {
               deal and what to look at instead.
             </p>
             <div className="hero-actions">
-              <Link href="/results?demo=1" className="btn">
+              <Link href="/search" className="btn">
+                Start searching · {usd(SEARCH_PRICE)}
+              </Link>
+              <Link href="/results?demo=1" className="btn btn-ghost">
                 Try it free
               </Link>
-              <a href="#how" className="btn btn-ghost">
-                See how it works
-              </a>
             </div>
+            <p className="hero-note">
+              {usd(SEARCH_PRICE)} a search, with an AI analysis included, or{" "}
+              <a href="#pricing">save with a monthly plan</a>. <a href="#how">See how it works</a>
+            </p>
           </div>
 
           {/* Mirrors the real AI result: a verdict, amenity chips, better deals. */}
