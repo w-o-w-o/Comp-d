@@ -223,6 +223,26 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
     return () => clearTimeout(timer);
   }, [demo, ready, stage, comps.status, address, placeId, lookup, mode, radiusMiles, estimateAmount, nearbyCount, dataFetchedAt]);
 
+  // Once the results are showing, the address bar holds this search's
+  // settings (radius, rent/buy), so refreshing or sharing the page reopens
+  // the results instead of starting over at the radius step. Updated in place:
+  // no navigation, nothing reloads.
+  useEffect(() => {
+    if (demo || !ready || stage !== "results") return;
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({
+        address: address || lookup.formattedAddress,
+        ...(placeId && { placeId }),
+        radius: String(Math.round(radiusMiles * 100) / 100),
+        mode,
+        from: "history",
+      });
+      const url = `/results?${params}`;
+      if (window.location.pathname + window.location.search !== url) window.history.replaceState(null, "", url);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [demo, ready, stage, address, placeId, lookup.formattedAddress, radiusMiles, mode]);
+
   // What a payment on this page is for, and where Stripe returns the user
   // (straight back to these results).
   const purchase = ready
