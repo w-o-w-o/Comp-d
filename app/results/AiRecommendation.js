@@ -591,6 +591,23 @@ function AiResult({ result, listingsById, mode, onSelect }) {
                 </ul>
                 {r.tradeoff && <span className="ai-tradeoff">Trade-off: {r.tradeoff}</span>}
               </button>
+              {r.corrections?.length > 0 && (
+                <ul className="ai-corrections">
+                  {r.corrections.map((c) => (
+                    <li key={`${c.field}|${c.pageValue}`}>
+                      ⚠ Listing page: <strong>{c.pageValue}</strong> (data said {c.dataValue})
+                      {c.source && (
+                        <>
+                          {" · "}
+                          <a href={c.source} target="_blank" rel="noopener noreferrer nofollow">
+                            {sourceName(c.source)}
+                          </a>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <AmenityList
                 amenities={amenities?.byListing?.[r.listingId]}
                 custom={customFindings?.byListing?.[r.listingId]}

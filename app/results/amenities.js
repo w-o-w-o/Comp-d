@@ -23,8 +23,26 @@ export function addressKey(address = "") {
     .trim();
 }
 
+const FACT_FIELDS = ["bedrooms", "bathrooms", "price", "size", "kind", "unavailable"];
+const httpUrl = (s) => (/^https?:\/\/[^\s"<>]+$/i.test(String(s || "").trim()) ? String(s).trim() : null);
+
+// Facts the home's listing page showed differently from the listing data
+// (for example 4 bedrooms where the data says 2), checked for shape.
+export function cleanFacts(raw) {
+  return (Array.isArray(raw) ? raw : [])
+    .filter((f) => FACT_FIELDS.includes(f?.field))
+    .slice(0, 6)
+    .map((f) => ({
+      field: f.field,
+      dataValue: String(f.dataValue || "").slice(0, 80),
+      pageValue: String(f.pageValue || "").slice(0, 80),
+      bedroomsOnPage: Number.isFinite(f.bedroomsOnPage) ? f.bedroomsOnPage : null,
+      source: httpUrl(f.source),
+    }));
+}
+
 // Checks an amenity record (from the AI or the database) for shape.
-// -> { features: { key: { status, detail } }, sources: [url] } or null.
+// -> { features: { key: { status, detail } }, sources: [url], facts } or null.
 export function cleanAmenities(raw) {
   if (!raw || typeof raw !== "object") return null;
   const features = {};
@@ -37,7 +55,8 @@ export function cleanAmenities(raw) {
     .map((s) => String(s).trim())
     .filter((s) => /^https?:\/\/[^\s"<>]+$/i.test(s))
     .slice(0, 4);
-  return { features, sources };
+  // factsChecked: the listing page's facts (beds, price…) were checked too.
+  return { features, sources, facts: cleanFacts(raw.facts), factsChecked: Boolean(raw.factsChecked) };
 }
 
 // Does this record say anything at all?
