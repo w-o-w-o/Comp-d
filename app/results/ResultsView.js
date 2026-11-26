@@ -246,6 +246,11 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
   // The open re-analysis tab, if any (a new analysis returns its new total).
   const tab = ai.status === "ready" && ai.data && "tab" in ai.data ? ai.data.tab : access?.tab || null;
 
+  // The "no homes in this area" message, once closed, stays closed for that
+  // radius and rent/buy choice (it comes back for a new one that's also empty).
+  const [emptyDismissed, setEmptyDismissed] = useState(null);
+  const emptyKey = `${mode}|${radiusMiles.toFixed(2)}`;
+
   // "Show homes and analyze": the first AI analysis runs as soon as the homes
   // load (after paying, if the search needed unlocking, including a trip to
   // Stripe's page, so the wish is kept in this tab's storage for a while).
@@ -410,17 +415,30 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             <PanToListing listing={selected} />
           </Map>
         )}
-        {ready && stage === "results" && comps.status === "ready" && comps.nearby.length === 0 && (
-          <div className={`empty-banner${wide && !aiCollapsed ? " empty-banner-with-ai" : ""}`} role="status">
-            <p className="empty-banner-main">
-              No {mode === "rent" ? "rentals" : "homes for sale"} in this area. Try a wider radius or a different search.
-            </p>
-            {/* The analysis included with the search is still there to use. */}
-            {access?.aiIncludedLeft && !ai.ranNew && !access.demo && access.source !== "full" && (
-              <p className="empty-banner-free">You still have one free AI analysis left!</p>
-            )}
-          </div>
-        )}
+        {ready &&
+          stage === "results" &&
+          comps.status === "ready" &&
+          comps.nearby.length === 0 &&
+          emptyDismissed !== emptyKey && (
+            <div className={`empty-banner${wide && !aiCollapsed ? " empty-banner-with-ai" : ""}`} role="status">
+              <button
+                type="button"
+                className="empty-banner-close"
+                aria-label="Close this message"
+                onClick={() => setEmptyDismissed(emptyKey)}
+              >
+                ×
+              </button>
+              <p className="empty-banner-main">
+                No {mode === "rent" ? "rentals" : "homes for sale"} in this area. Try a wider radius or a different
+                search.
+              </p>
+              {/* The analysis included with the search is still there to use. */}
+              {access?.aiIncludedLeft && !ai.ranNew && !access.demo && access.source !== "full" && (
+                <p className="empty-banner-free">You still have one free AI analysis left!</p>
+              )}
+            </div>
+          )}
       </div>
 
       {stage !== "results" && (

@@ -441,9 +441,32 @@ h3 {
   width: fit-content;
   max-width: 520px;
   display: grid;
-  gap: 6px;
-  text-align: center;
-  pointer-events: none;
+  gap: 4px;
+  padding: 12px 40px 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.empty-banner-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.empty-banner-close:hover {
+  background: var(--bg-alt);
+  color: var(--text);
 }
 
 .empty-banner-with-ai {
@@ -471,21 +494,16 @@ h3 {
 
 .empty-banner p {
   margin: 0;
-  padding: 8px 14px;
-  border-radius: 10px;
   font-weight: 600;
   font-size: 0.92rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 .empty-banner-main {
-  background: #d9534f;
-  color: #ffffff;
+  color: #e5625e;
 }
 
 .empty-banner-free {
-  background: #2fa77a;
-  color: #ffffff;
+  color: var(--accent);
 }
 
 .results-panel {
