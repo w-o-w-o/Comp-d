@@ -250,6 +250,8 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
   // radius and rent/buy choice (it comes back for a new one that's also empty).
   const [emptyDismissed, setEmptyDismissed] = useState(null);
   const emptyKey = `${mode}|${radiusMiles.toFixed(2)}`;
+  // The "free AI analysis left" note, once closed, stays closed on this page.
+  const [freeDismissed, setFreeDismissed] = useState(false);
 
   // "Show homes and analyze": the first AI analysis runs as soon as the homes
   // load (after paying, if the search needed unlocking, including a trip to
@@ -415,30 +417,26 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             <PanToListing listing={selected} />
           </Map>
         )}
-        {ready &&
-          stage === "results" &&
-          comps.status === "ready" &&
-          comps.nearby.length === 0 &&
-          emptyDismissed !== emptyKey && (
-            <div className={`empty-banner${wide && !aiCollapsed ? " empty-banner-with-ai" : ""}`} role="status">
-              <button
-                type="button"
-                className="empty-banner-close"
-                aria-label="Close this message"
-                onClick={() => setEmptyDismissed(emptyKey)}
-              >
-                ×
-              </button>
-              <p className="empty-banner-main">
+        {ready && stage === "results" && comps.status === "ready" && comps.nearby.length === 0 && (
+          <div className={`empty-banners${wide && !aiCollapsed ? " empty-banners-with-ai" : ""}`}>
+            {emptyDismissed !== emptyKey && (
+              <EmptyBanner tone="main" onClose={() => setEmptyDismissed(emptyKey)}>
                 No {mode === "rent" ? "rentals" : "homes for sale"} in this area. Try a wider radius or a different
                 search.
-              </p>
-              {/* The analysis included with the search is still there to use. */}
-              {access?.aiIncludedLeft && !ai.ranNew && !access.demo && access.source !== "full" && (
-                <p className="empty-banner-free">You still have one free AI analysis left!</p>
+              </EmptyBanner>
+            )}
+            {/* The analysis included with the search is still there to use. */}
+            {!freeDismissed &&
+              access?.aiIncludedLeft &&
+              !ai.ranNew &&
+              !access.demo &&
+              access.source !== "full" && (
+                <EmptyBanner tone="free" onClose={() => setFreeDismissed(true)}>
+                  You still have one free AI analysis left!
+                </EmptyBanner>
               )}
-            </div>
-          )}
+          </div>
+        )}
       </div>
 
       {stage !== "results" && (
@@ -660,6 +658,19 @@ function RadiusControls({ radiusMiles, onPreset }) {
         ))}
       </div>
     </>
+  );
+}
+
+// One message card over the map, with its own close button.
+// `tone`: "main" (red text) or "free" (green text).
+function EmptyBanner({ tone, onClose, children }) {
+  return (
+    <div className={`empty-banner empty-banner-${tone}`} role="status">
+      <p>{children}</p>
+      <button type="button" className="empty-banner-close" aria-label="Close this message" onClick={onClose}>
+        ×
+      </button>
+    </div>
   );
 }
 
