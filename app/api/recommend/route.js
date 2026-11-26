@@ -7,7 +7,7 @@ import { AiLimitError, knownToMiss, MAX_LISTINGS, recommend } from "../../../lib
 import { areaProfile, floodZones, schoolDistances, walkabilities } from "../../../lib/area";
 import { getUserPlan } from "../../../lib/plans";
 import { parseNearby } from "../../../lib/nearby";
-import { getSavedAmenities } from "../../../lib/amenities";
+import { getSavedAmenities, getSavedCustom } from "../../../lib/amenities";
 import { addressKey } from "../../results/amenities";
 import { distanceMiles, fetchRadiusFor } from "../../results/geo";
 import { defaultFilters, matchesFilters, medianPricePerSqft, parseFilters } from "../../results/quality";
@@ -227,6 +227,14 @@ export async function POST(request) {
         (!commute || commute.destination === demoWeek.commuteTo),
     };
     const searchKey = searchKeyFor(lat, lng, mode);
+    // What was already found on the web for the user's own priorities at these
+    // homes (in the last 7 days), so the AI doesn't search for it again.
+    const described = describePreferences(priorities, mode);
+    const savedCustom = described?.customPriorities?.length
+      ? await getSavedCustom([address, ...considered.map((l) => l.address)], described.customPriorities).catch(
+          () => new Map()
+        )
+      : new Map();
     const result = await recommend({
       mode,
       subjectAddress: address,
@@ -235,9 +243,10 @@ export async function POST(request) {
       area,
       commute,
       filters,
-      priorities: describePreferences(priorities, mode),
+      priorities: described,
       subjectExtras,
       subjectAmenities,
+      savedCustom,
       dislikes: reasonsForAi(hidden),
       radiusMiles,
       userId,
