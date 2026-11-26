@@ -1185,6 +1185,14 @@ h3 {
   color: var(--muted);
 }
 
+/* "Don't worry, we'll prompt you when you need to pay." right under the search bar. */
+.search-reassure {
+  margin: 10px 0 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
 .try-free {
   display: flex;
   align-items: center;

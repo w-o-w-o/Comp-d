@@ -6,7 +6,7 @@ import SearchBar from "./SearchBar";
 import MapsProvider from "../maps/MapsProvider";
 import HistoryList from "../history/HistoryList";
 import { listSearches, toListEntries } from "../../lib/history";
-import { formatCents, getUserPlan, SEARCH_PRICE } from "../../lib/plans";
+import { CREDIT_COST, formatCents, getUserPlan, SEARCH_PRICE } from "../../lib/plans";
 import { planUsage } from "../../lib/access";
 import { planUsageText } from "../results/PlanUsage";
 
@@ -23,6 +23,15 @@ export default async function SearchPage() {
   const recent = toListEntries(searches);
   // Subscribers see what's left on their plan instead of the per-search price.
   const usageText = planUsageText(usage);
+  // Searching is free until something needs paying for, and the page always asks first.
+  const creditsLeft = usage?.credits ? usage.credits.max - usage.credits.used : null;
+  const reassurance = access.fullAccess
+    ? null
+    : creditsLeft == null
+      ? "Don't worry, we'll prompt you when you need to pay."
+      : creditsLeft >= CREDIT_COST.search
+        ? "Searches come out of your plan's credits. We'll ask you before anything costs extra."
+        : "You're out of credits for a new search, so we'll ask you before charging for one.";
 
   return (
     <>
@@ -36,6 +45,7 @@ export default async function SearchPage() {
         <MapsProvider>
           <SearchBar />
         </MapsProvider>
+        {reassurance && <p className="search-reassure">{reassurance}</p>}
         {access.fullAccess ? null : usageText ? (
           <p className="search-pricing">
             {usageText} <Link href="/account">See your plan</Link>.
