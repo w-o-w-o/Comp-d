@@ -2091,19 +2091,21 @@ h3 {
 
 /* "Not for me" under a pick, its reason box, and a hidden pick. */
 .not-for-me {
-  margin-top: 6px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--muted);
+  margin: 8px 4px 0;
+  padding: 3px 10px;
+  border: 1px solid rgba(217, 83, 79, 0.6);
+  border-radius: 999px;
+  background: rgba(217, 83, 79, 0.1);
+  color: #e0645f;
   font: inherit;
-  font-size: 0.8rem;
-  text-decoration: underline;
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .not-for-me:hover {
-  color: var(--text);
+  background: rgba(217, 83, 79, 0.2);
+  border-color: #d9534f;
 }
 
 .not-for-me-form {
@@ -2206,7 +2208,7 @@ h3 {
   font-size: 0.95rem;
 }
 
-.past-analyses ul {
+.past-analyses > ul {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -2374,8 +2376,8 @@ h3 {
 }
 
 .amenity-chip {
-  font-size: 0.75rem;
-  padding: 2px 8px;
+  font-size: 0.72rem;
+  padding: 1px 7px;
   border-radius: 999px;
   border: 1px solid var(--border);
   color: var(--muted);

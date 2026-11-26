@@ -570,7 +570,7 @@ function NotForMe({ listing, onHide }) {
   if (!open) {
     return (
       <button type="button" className="not-for-me" onClick={() => setOpen(true)}>
-        Not for me
+        ✕ Not for me
       </button>
     );
   }
