@@ -15,6 +15,7 @@ import { claimAnalysis, ensureSearchAccess, PaymentRequired, planUsage, searchKe
 import { demoAt } from "../../../lib/demo";
 import { tabSummary } from "../../../lib/tabs";
 import { analysisLabel, saveAnalysis } from "../../../lib/analyses";
+import { hiddenListings, reasonsForAi } from "../../../lib/hidden";
 import {
   checkListing,
   describePreferences,
@@ -102,10 +103,14 @@ export async function POST(request) {
       ...(demoWeek && { listingsCenter: demoWeek.center, excludeAddress: demoWeek.address }),
     });
 
-    // Same homes the user sees: inside the radius and matching their filters.
+    // Same homes the user sees: inside the radius and matching their filters,
+    // minus the ones they said "not for me" to.
     const filters = parseFilters(body.filters);
     const position = { lat, lng };
+    const hidden = demoWeek ? [] : await hiddenListings(userId, mode).catch(() => []);
+    const hiddenIds = new Set(hidden.map((h) => h.listingId));
     const nearby = listings
+      .filter((l) => !hiddenIds.has(l.id))
       .filter((l) => matchesFilters(l, filters))
       .map((l) => ({ ...l, distance: distanceMiles(position, l) }))
       .filter((l) => l.distance <= radiusMiles)
@@ -113,7 +118,11 @@ export async function POST(request) {
 
     if (nearby.length === 0) {
       return Response.json(
-        { error: "There are no listings in this radius that match your filters." },
+        {
+          error: hidden.length
+            ? "There are no listings left in this radius that match your filters and that you haven't hidden."
+            : "There are no listings in this radius that match your filters.",
+        },
         { status: 422 }
       );
     }
@@ -216,6 +225,7 @@ export async function POST(request) {
       priorities: describePreferences(priorities, mode),
       subjectExtras,
       subjectAmenities,
+      dislikes: reasonsForAi(hidden),
       radiusMiles,
       userId,
       claim: () => claimAnalysis(userId, access, searchKey, { demo }),

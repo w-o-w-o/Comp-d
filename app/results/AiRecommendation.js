@@ -114,7 +114,7 @@ const whenLabel = (d) =>
   new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 // Earlier analyses as small cards; each opens to the full result as it was.
-function PastAnalyses({ ai, mode, listingsById, onSelect }) {
+function PastAnalyses({ ai, mode, listingsById, onSelect, hidden = null }) {
   const showing = ai.status === "ready" && !ai.stale ? ai.data.analysisKey : null;
   const list = usePastAnalyses(ai.where, ai.status === "ready" ? ai.data.analysisKey : null).filter(
     (a) => a.analysisKey !== showing
@@ -144,7 +144,7 @@ function PastAnalyses({ ai, mode, listingsById, onSelect }) {
                     {a.result.recommendations.length === 1 ? "pick" : "picks"}
                   </span>
                 </summary>
-                <AiResult result={a.result} listingsById={lookup} mode={mode} onSelect={onSelect} />
+                <AiResult result={a.result} listingsById={lookup} mode={mode} onSelect={onSelect} hidden={hidden} />
               </details>
             </li>
           );
@@ -198,6 +198,10 @@ export default function AiRecommendation({
     ? priorities.payload.items.length + priorities.payload.custom.length
     : 0;
   const canCancel = ai.stale && ranWith && ai.matchesLast(ranWith.payload, ranWith.filters);
+  // "Not for me": for the user's own searches (the shared demo doesn't use it).
+  const canHide = !locked && Boolean(access) && !access.demo;
+  const hiddenState = useHidden(mode, canHide);
+  const hidden = canHide ? hiddenState : null;
 
   function run() {
     setPrefsOpen(false);
@@ -347,10 +351,13 @@ export default function AiRecommendation({
       )}
 
       {ai.status === "ready" && !ai.stale && (
-        <AiResult result={ai.data} listingsById={listingsById} mode={mode} onSelect={onSelect} />
+        <AiResult result={ai.data} listingsById={listingsById} mode={mode} onSelect={onSelect} hidden={hidden} />
       )}
 
-      {!locked && <PastAnalyses ai={ai} mode={mode} listingsById={listingsById} onSelect={onSelect} />}
+      {!locked && (
+        <PastAnalyses ai={ai} mode={mode} listingsById={listingsById} onSelect={onSelect} hidden={hidden} />
+      )}
+      {canHide && <HiddenHomes hidden={hidden} />}
     </div>
   );
 }
@@ -555,7 +562,107 @@ function AmenityList({ amenities, custom, mode }) {
   );
 }
 
-function AiResult({ result, listingsById, mode, onSelect }) {
+// "Not for me" under a pick: opens a short box for the reason, then hides it.
+const MAX_REASON = 160;
+function NotForMe({ listing, onHide }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  if (!open) {
+    return (
+      <button type="button" className="not-for-me" onClick={() => setOpen(true)}>
+        Not for me
+      </button>
+    );
+  }
+  return (
+    <form
+      className="not-for-me-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onHide(reason.trim());
+      }}
+    >
+      <label htmlFor={`why-${listing.id}`}>What don&apos;t you like about it? (optional)</label>
+      <input
+        id={`why-${listing.id}`}
+        type="text"
+        value={reason}
+        maxLength={MAX_REASON}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="e.g. too far from campus, no dishwasher"
+        autoFocus
+      />
+      <p className="panel-muted">
+        Future analyses will skip this home, and the AI will keep your reason in mind for others.
+      </p>
+      <div className="pay-actions">
+        <button type="submit" className="btn btn-small">
+          Hide this home
+        </button>
+        <button type="button" className="pref-remove" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// The user's hidden homes for renting or buying, with hide and undo.
+export function useHidden(mode, enabled = true) {
+  const [list, setList] = useState([]);
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    fetch(`/api/hidden?mode=${mode}`)
+      .then((r) => (r.ok ? r.json() : { hidden: [] }))
+      .then((b) => !cancelled && setList(b.hidden || []))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, enabled]);
+
+  async function hide(listing, reason) {
+    const entry = { listingId: listing.id, address: listing.address, reason, createdAt: new Date().toISOString() };
+    setList((l) => [entry, ...l.filter((h) => h.listingId !== listing.id)]);
+    await fetch("/api/hidden", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ listingId: listing.id, address: listing.address, mode, reason }),
+    }).catch(() => {});
+  }
+  async function unhide(listingId) {
+    setList((l) => l.filter((h) => h.listingId !== listingId));
+    await fetch(`/api/hidden?${new URLSearchParams({ listingId, mode })}`, { method: "DELETE" }).catch(() => {});
+  }
+  return { list, ids: new Set(list.map((h) => h.listingId)), hide, unhide };
+}
+
+// "Homes you hid (3)": each with its reason and Undo.
+function HiddenHomes({ hidden }) {
+  if (!hidden?.list.length) return null;
+  return (
+    <details className="hidden-homes">
+      <summary>Homes you hid ({hidden.list.length})</summary>
+      <p className="panel-muted">Analyses skip these. Your reasons help the AI pick homes you&apos;ll like.</p>
+      <ul>
+        {hidden.list.map((h) => (
+          <li key={h.listingId}>
+            <span>
+              <strong>{h.address.split(",")[0]}</strong>
+              {h.reason && <span className="panel-muted"> · “{h.reason}”</span>}
+            </span>
+            <button type="button" className="pref-link" onClick={() => hidden.unhide(h.listingId)}>
+              Undo
+            </button>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+function AiResult({ result, listingsById, mode, onSelect, hidden = null }) {
   const { verdict, marketContext, recommendations, caveats, priorityNotes = [], amenities, customFindings } = result;
 
   return (
@@ -577,6 +684,18 @@ function AiResult({ result, listingsById, mode, onSelect }) {
         {recommendations.map((r) => {
           const l = listingsById.get(r.listingId);
           if (!l) return null;
+          if (hidden?.ids.has(r.listingId)) {
+            return (
+              <li key={r.listingId} className="ai-pick-hidden">
+                <span>
+                  <strong>{formatPrice(l.price, mode)}</strong> · hidden. Future analyses will skip it.
+                </span>
+                <button type="button" className="pref-link" onClick={() => hidden.unhide(r.listingId)}>
+                  Undo
+                </button>
+              </li>
+            );
+          }
           return (
             <li key={r.listingId}>
               <button type="button" className="ai-pick" onClick={() => onSelect(r.listingId)}>
@@ -616,6 +735,7 @@ function AiResult({ result, listingsById, mode, onSelect }) {
                 custom={customFindings?.byListing?.[r.listingId]}
                 mode={mode}
               />
+              {hidden && <NotForMe listing={l} onHide={(reason) => hidden.hide(l, reason)} />}
             </li>
           );
         })}

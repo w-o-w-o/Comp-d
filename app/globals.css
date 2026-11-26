@@ -2089,6 +2089,94 @@ h3 {
   font-weight: 800;
 }
 
+/* "Not for me" under a pick, its reason box, and a hidden pick. */
+.not-for-me {
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.not-for-me:hover {
+  color: var(--text);
+}
+
+.not-for-me-form {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-alt);
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.not-for-me-form label {
+  font-weight: 600;
+}
+
+.not-for-me-form input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.not-for-me-form p {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.ai-pick-hidden {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* "Homes you hid (3)" in the AI panel. */
+.hidden-homes {
+  margin-top: 14px;
+  font-size: 0.85rem;
+}
+
+.hidden-homes summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.hidden-homes p {
+  margin: 6px 0;
+}
+
+.hidden-homes ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.hidden-homes li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 /* Facts a listing page showed differently from the data, under a pick. */
 .ai-corrections {
   list-style: none;
