@@ -429,6 +429,7 @@ const LOADING_STEPS = {
   rent: [
     "Comparing rents in your radius…",
     "Picking the strongest candidates…",
+    "Checking each listing is still available…",
     "Searching listings for laundry, A/C and parking…",
     "Checking which utilities are included…",
     "Reading property manager pages…",
@@ -504,7 +505,9 @@ function AmenityList({ amenities, custom, mode }) {
     // "Garage and fenced yard: not found online."
     const names = (custom?.items || []).map((c) => c.priority);
     const customText = names.length > 3 ? "your own priorities" : names.join(names.length === 2 ? " and " : ", ");
-    const what = [amenities?.features && "Laundry, utilities, parking and pets", customText].filter(Boolean).join(" and ");
+    const what = [amenities?.features && "Availability, laundry, utilities, parking and pets", customText]
+      .filter(Boolean)
+      .join(" and ");
     return (
       <p className="panel-muted amenity-none">
         {what.charAt(0).toUpperCase() + what.slice(1)}: not found online.

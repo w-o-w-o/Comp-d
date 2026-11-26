@@ -2,6 +2,8 @@
 // data). Shared by the page, the priorities, and the server.
 
 export const AMENITY_FEATURES = [
+  // Checked on every lookup, not a priority: a home that's taken is never recommended.
+  { key: "available", label: "Still available", short: "Available" },
   { key: "laundry", label: "In-unit laundry", short: "Laundry" },
   { key: "airConditioning", label: "Air conditioning", short: "A/C" },
   { key: "heatIncluded", label: "Heat included", short: "Heat incl." },

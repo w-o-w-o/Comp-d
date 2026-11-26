@@ -61,7 +61,7 @@ const categories = [
   },
   {
     name: "Rental amenities",
-    detail: "In-unit laundry, A/C, parking, pets, and whether heat, water, or Wi-Fi is included",
+    detail: "Whether it's still available, in-unit laundry, A/C, parking, pets, and whether heat, water, or Wi-Fi is included",
     source: "Listing pages, linked",
   },
   {
