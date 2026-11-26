@@ -34,6 +34,8 @@ export default function SearchBar({ initialAddress = "", autoFocus = true }) {
         const result = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
           input,
           sessionToken: sessionToken.current,
+          // Comp'd's listing data covers the U.S. only.
+          includedRegionCodes: ["us"],
         });
         if (cancelled) return;
         setSuggestions(result.suggestions.filter((s) => s.placePrediction).slice(0, 5));

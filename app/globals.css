@@ -683,6 +683,39 @@ h3 {
   text-align: center;
 }
 
+.flow-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.flow-card-actions .btn {
+  flex: 1 1 auto;
+}
+
+/* The priorities step: the same priority picker as the AI panel. Tall, so it scrolls. */
+.flow-card-priorities {
+  max-height: calc(100% - 48px);
+  overflow-y: auto;
+}
+
+.flow-card-priorities .ai-prefs {
+  margin-top: 4px;
+}
+
+.flow-card-skip {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 @keyframes card-in {
   from {
     opacity: 0;

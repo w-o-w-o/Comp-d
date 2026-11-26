@@ -14,7 +14,7 @@ import {
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import HomePhoto from "./HomePhoto";
-import { PLACE_FIELDS, recallPlace, rememberPlace } from "../maps/placeLookup";
+import { isArea, PLACE_FIELDS, recallPlace, rememberPlace } from "../maps/placeLookup";
 import useComparables from "./useComparables";
 import AiRecommendation, { useAiCollapsed, useRecommendation } from "./AiRecommendation";
 import { SearchPaywall } from "./Payment";
@@ -22,7 +22,7 @@ import PlanUsage from "./PlanUsage";
 import AreaInsights, { useArea } from "./AreaInsights";
 import CommuteBox, { formatCommute, useCommute } from "./Commute";
 import { useNearbyPlaces } from "./NearbyPlaces";
-import { usePriorities } from "./AiPreferences";
+import AiPreferences, { usePriorities } from "./AiPreferences";
 import { animateCamera, cameraForCircle } from "./camera";
 import {
   BED_OPTIONS,
@@ -47,9 +47,11 @@ import {
 const PRESETS_SORTED = [...RADIUS_PRESETS_MILES].sort((a, b) => a - b);
 
 // Results flow, in stages:
-//   "arriving" — the map zooms in from far away to the property's pin
-//   "radius"   — the user picks a search radius (presets or dragging) and rent/buy
-//   "results"  — estimate and nearby listings load, as price pins and photo cards
+//   "arriving"   — the map zooms in from far away to the property's pin
+//   "radius"     — the user picks a search radius (presets or dragging) and rent/buy
+//   "priorities" — what matters to them (the AI panel's priorities), optional
+//   "results"    — estimate and nearby listings load, as price pins and photo
+//                  cards, then the first AI analysis runs with those priorities
 // Searches reopened from history skip straight to "results" with their saved
 // radius and rent/buy choice. Every search that reaches "results" is saved.
 export default function ResultsView({ address, placeId, initialRadius, initialMode, fromHistory, demo = false }) {
@@ -113,6 +115,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             status: "ready",
             position: place.location.toJSON(),
             formattedAddress: place.formattedAddress,
+            types: place.types || [],
           });
         }
       } catch (err) {
@@ -128,7 +131,10 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [places, address, placeId, demo, demo && mode]);
 
-  const ready = lookup.status === "ready";
+  // A ZIP code, city or neighborhood instead of one home: nothing is looked up
+  // or charged; the page asks for a street address instead.
+  const areaSearch = lookup.status === "ready" && !demo && isArea(lookup.types);
+  const ready = lookup.status === "ready" && !areaSearch;
   const comps = useComparables({
     // Nothing is fetched (or billed) until the user confirms a radius.
     position: ready && stage === "results" ? lookup.position : null,
@@ -239,6 +245,37 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
   const usage = (ai.status === "ready" && ai.data?.usage) || access?.usage || null;
   // The open re-analysis tab, if any (a new analysis returns its new total).
   const tab = ai.status === "ready" && ai.data && "tab" in ai.data ? ai.data.tab : access?.tab || null;
+
+  // "Show homes and analyze": the first AI analysis runs as soon as the homes
+  // load (after paying, if the search needed unlocking, including a trip to
+  // Stripe's page, so the wish is kept in this tab's storage for a while).
+  const autoKey = ready ? `compd-auto-analyze|${lookup.formattedAddress}|${mode}` : null;
+  function showHomes(analyze) {
+    try {
+      if (analyze && autoKey) window.sessionStorage.setItem(autoKey, String(Date.now()));
+    } catch {}
+    setStage("results");
+  }
+  useEffect(() => {
+    if (!autoKey || stage !== "results" || comps.status !== "ready" || ai.status !== "idle") return;
+    let asked = false;
+    try {
+      const at = Number(window.sessionStorage.getItem(autoKey));
+      asked = Date.now() - at < 30 * 60_000;
+    } catch {}
+    if (!asked) return;
+    // Wait briefly for the nearby-places counts, which the AI uses too.
+    if (nearby.status === "loading") return;
+    try {
+      window.sessionStorage.removeItem(autoKey);
+    } catch {}
+    // Only the analysis the search includes (or a free one) runs by itself;
+    // anything that would cost more waits for the Analyze button.
+    const free = access && (access.aiIncludedLeft || access.source === "full" || access.demo);
+    if (!free || shown.length === 0) return;
+    ai.run({ current: priorities.current, payload: priorities.payload, filters });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoKey, stage, comps.status, ai.status, nearby.status, access, shown.length]);
 
   function pickPreset(miles) {
     setRadiusMiles(miles);
@@ -382,6 +419,25 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
         </div>
       )}
 
+      {areaSearch && (
+        <div className="flow-card" role="dialog" aria-labelledby="area-title">
+          <h2 id="area-title">That&apos;s an area, not a specific home</h2>
+          <p className="panel-muted">
+            {lookup.formattedAddress.replace(/,\s*USA$/, "")} covers many homes. Comp&apos;d compares one home
+            against the homes around it, so enter the street address of a place you&apos;re considering, like
+            &ldquo;123 Main St, San Luis Obispo, CA&rdquo;. You haven&apos;t been charged.
+          </p>
+          <div className="flow-card-actions">
+            <Link href="/search" className="btn">
+              Enter an address
+            </Link>
+            <Link href="/results?demo=1" className="btn btn-ghost">
+              Try the free demo
+            </Link>
+          </div>
+        </div>
+      )}
+
       {(!MAPS_KEY || lookup.status === "error") && (
         <div className="flow-card">
           <h2>{MAPS_KEY ? "We couldn't find that address" : "Maps isn't set up"}</h2>
@@ -407,8 +463,28 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             <span className="flow-card-label">I&apos;m looking to</span>
             {modeControls}
           </div>
-          <button type="button" className="btn flow-card-go" onClick={() => setStage("results")}>
-            Show homes
+          <button type="button" className="btn flow-card-go" onClick={() => setStage("priorities")}>
+            Next: what matters to you
+          </button>
+        </div>
+      )}
+
+      {ready && stage === "priorities" && (
+        <div className="flow-card flow-card-priorities" role="dialog" aria-labelledby="priorities-title">
+          <h2 id="priorities-title">What matters to you?</h2>
+          <p className="panel-muted">
+            Pick any priorities for your AI analysis. It runs as soon as the homes load
+            {demo ? "." : ", and the first one is included with your search."}
+          </p>
+          <AiPreferences priorities={priorities} mode={mode} ctx={{ estimate: null, radiusMiles }} />
+          <button type="button" className="btn flow-card-go" onClick={() => showHomes(true)}>
+            Show homes and analyze
+          </button>
+          <button type="button" className="flow-card-skip" onClick={() => showHomes(false)}>
+            Skip, just show the homes
+          </button>
+          <button type="button" className="flow-card-skip" onClick={() => setStage("radius")}>
+            ← Back to the radius
           </button>
         </div>
       )}
