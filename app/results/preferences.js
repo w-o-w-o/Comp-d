@@ -27,8 +27,8 @@ const amenityStatus = (l, key) => {
   const s = l.amenities?.features?.[key]?.status;
   return s === "yes" ? true : s === "no" ? false : null;
 };
-function amenityPreference(id, label, key, summary) {
-  return { id, label, modes: ["rent"], hint: AMENITY_HINT, summary: () => summary, check: (l) => amenityStatus(l, key) };
+function amenityPreference(id, label, key, summary, hint = AMENITY_HINT) {
+  return { id, label, modes: ["rent"], hint, summary: () => summary, check: (l) => amenityStatus(l, key) };
 }
 
 export const MAX_CUSTOM = 5;
@@ -95,6 +95,13 @@ export const PREFERENCES = [
     summary: (v) => `${v}+ baths`,
     check: (l, v) => (l.baths == null ? null : l.baths >= v),
   },
+  amenityPreference(
+    "available",
+    "Still available",
+    "available",
+    "Still available to rent",
+    "The AI checks every home's listing page for this anyway, and never recommends one that's taken. As a must-have, only homes confirmed available are recommended; otherwise unconfirmed ones can be too."
+  ),
   amenityPreference("laundry", "In-unit laundry", "laundry", "Washer and dryer in the unit"),
   amenityPreference("ac", "Air conditioning", "airConditioning", "Air conditioning"),
   amenityPreference("heat", "Heat included", "heatIncluded", "Heat included in rent"),
