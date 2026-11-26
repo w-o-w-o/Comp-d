@@ -171,7 +171,7 @@ export default function Home() {
             </p>
             <div className="hero-actions">
               <Link href="/search" className="btn">
-                Start searching · {usd(SEARCH_PRICE)}
+                Start searching
               </Link>
               <Link href="/results?demo=1" className="btn btn-ghost">
                 Try it free
@@ -285,8 +285,8 @@ export default function Home() {
           <div className="wrap">
             <h2 className="section-title">Everything that matters, compared</h2>
             <p className="section-sub">
-              Comp&apos;d looks well beyond the price tag, using public data and each home&apos;s own listing. You
-              choose which of these count, as must-haves or nice-to-haves.
+              Comp&apos;d looks well beyond the price tag, using public data and each home&apos;s own listing. Every
+              analysis weighs these, and you can mark what matters most to you as a must-have or nice-to-have.
             </p>
             <ul className="categories">
               {categories.map((c) => (

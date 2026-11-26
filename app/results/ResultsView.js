@@ -613,7 +613,7 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
       )}
 
       {ready && stage === "results" && wide && (
-        <aside className={aiCollapsed ? "ai-panel ai-panel-collapsed" : "ai-panel"} aria-label="AI recommendation">
+        <aside className={aiCollapsed ? "ai-panel ai-panel-collapsed" : "ai-panel"} aria-label="AI analysis">
           {aiSection}
         </aside>
       )}

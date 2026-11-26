@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { sql } from "../../../lib/db";
 import { BudgetError } from "../../../lib/rentcast";
 import { loadComps } from "../../../lib/comps";
-import { AiLimitError, MAX_LISTINGS, recommend } from "../../../lib/recommend";
+import { AiLimitError, knownToMiss, MAX_LISTINGS, recommend } from "../../../lib/recommend";
 import { areaProfile, floodZones, schoolDistances, walkabilities } from "../../../lib/area";
 import { getUserPlan } from "../../../lib/plans";
 import { parseNearby } from "../../../lib/nearby";
@@ -60,7 +60,7 @@ export async function POST(request) {
 
   if (!sql || !process.env.RENTCAST_API_KEY || !process.env.ANTHROPIC_API_KEY) {
     return Response.json(
-      { error: "AI recommendations aren't set up on this server yet." },
+      { error: "AI analyses aren't set up on this server yet." },
       { status: 503 }
     );
   }
@@ -144,11 +144,24 @@ export async function POST(request) {
       mode === "rent" ? await getSavedAmenities([address, ...nearby.map((l) => l.address)]) : new Map();
     const subjectAmenities = savedAmenities.get(addressKey(address)) || null;
 
-    let withFacts = nearby.map((l) => ({
-      ...l,
-      schoolMiles: schoolDistances(l, position, profile.schools),
-      ...(savedAmenities.has(addressKey(l.address)) && { amenities: savedAmenities.get(addressKey(l.address)) }),
-    }));
+    // Homes whose listing page was already found (in the last 7 days) to be
+    // taken, or to have bedrooms outside the filter, are left out up front, so
+    // the AI doesn't spend lookups on them.
+    const knownMisses = nearby.filter((l) => knownToMiss(savedAmenities.get(addressKey(l.address)), filters));
+    const skip = new Set(knownMisses.map((l) => l.id));
+    let withFacts = nearby
+      .filter((l) => !skip.has(l.id))
+      .map((l) => ({
+        ...l,
+        schoolMiles: schoolDistances(l, position, profile.schools),
+        ...(savedAmenities.has(addressKey(l.address)) && { amenities: savedAmenities.get(addressKey(l.address)) }),
+      }));
+    if (withFacts.length === 0) {
+      return Response.json(
+        { error: "Every listing left in this radius was recently found to be taken or not to match your bedrooms." },
+        { status: 422 }
+      );
+    }
     if (wants("walkable")) {
       const head = withFacts.slice(0, WALK_CHECK_LIMIT);
       const scores = await walkabilities(head);
@@ -230,6 +243,14 @@ export async function POST(request) {
       userId,
       claim: () => claimAnalysis(userId, access, searchKey, { demo }),
     });
+    if (knownMisses.length) {
+      const one = knownMisses.length === 1;
+      result.caveats.push(
+        one
+          ? "1 home was skipped: its listing page recently showed it's no longer available or doesn't match your bedroom choice."
+          : `${knownMisses.length} homes were skipped: their listing pages recently showed they're no longer available or don't match your bedroom choice.`
+      );
+    }
     // Kept in the user's list of analyses to look back on (a failure here
     // shouldn't cost them the result).
     await saveAnalysis({
@@ -261,9 +282,9 @@ export async function POST(request) {
     }
     if (err instanceof Anthropic.AuthenticationError) {
       console.error("Anthropic API key rejected:", err.message);
-      return Response.json({ error: "AI recommendations aren't set up correctly." }, { status: 503 });
+      return Response.json({ error: "AI analyses aren't set up correctly." }, { status: 503 });
     }
-    console.error("AI recommendation failed:", err);
-    return Response.json({ error: "Couldn't get an AI recommendation. Try again later." }, { status: 502 });
+    console.error("AI analysis failed:", err);
+    return Response.json({ error: "Couldn't run the AI analysis. Nothing was charged; try again later." }, { status: 502 });
   }
 }

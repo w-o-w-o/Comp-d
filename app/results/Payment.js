@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { dollars, REANALYSIS_PRICE, TAB_HOLD, TAB_HOURS } from "../../lib/prices";
 
-const dollars = (cents) => `$${(cents / 100).toFixed(2)}`;
 const BRANDS = { visa: "Visa", mastercard: "Mastercard", amex: "Amex", discover: "Discover" };
 const cardLabel = (c) => `${BRANDS[c.brand] || c.brand} •••• ${c.last4}`;
 
@@ -46,7 +46,7 @@ export function HoldNotice({ hold, each, search = null, tab = null }) {
           <strong>+{dollars(each)}</strong> for every re-analysis{search != null ? " after that" : ""}
         </li>
         <li>
-          The hold lifts after <strong>24 hours</strong>, and you&apos;re charged once for what you used. Use up the{" "}
+          The hold lifts after <strong>{TAB_HOURS} hours</strong>, and you&apos;re charged once for what you used. Use up the{" "}
           {dollars(hold)} and a new {dollars(hold)} hold starts.
         </li>
       </ul>
@@ -172,14 +172,14 @@ export default function PayButton({ purchase, price, onPaid, hold = null, childr
 
 // Shown in place of a search's results until it's unlocked.
 export function SearchPaywall({ comps, purchase }) {
-  const { price, hold = 500, each = 50, tab = null } = comps.payment;
+  const { price, hold = TAB_HOLD, each = REANALYSIS_PRICE, tab = null } = comps.payment;
   return (
     <div className="paywall">
       <p className="paywall-title">{comps.message || "Unlock this search to see its homes."}</p>
       <ul className="paywall-list">
         <li>Every home for {purchase.mode === "buy" ? "sale" : "rent"} in your radius, for 7 days</li>
         <li>1 AI analysis included</li>
-        <li>3 commute checks</li>
+        <li>Commute checks to work, school, or anywhere you go</li>
       </ul>
       <HoldNotice hold={hold} each={each} search={price} tab={tab} />
       <PayButton

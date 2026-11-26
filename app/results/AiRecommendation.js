@@ -5,8 +5,8 @@ import { formatFacts, formatMiles, formatPrice } from "./format";
 import AiPreferences from "./AiPreferences";
 import PayButton, { HoldNotice } from "./Payment";
 import { AMENITY_FEATURES, sourceName } from "./amenities";
+import { CREDIT_COST, dollars, REANALYSIS_PRICE, TAB_HOLD } from "../../lib/prices";
 
-const dollars = (cents) => `$${(cents / 100).toFixed(2)}`;
 
 const RATING_LABELS = {
   "good deal": "Good deal",
@@ -232,7 +232,7 @@ export default function AiRecommendation({
   return (
     <div className="panel-section ai-section">
       <div className="ai-head">
-        <h2>AI recommendation</h2>
+        <h2>AI analysis</h2>
         <span className="ai-head-right">
           <span className="ai-badge">Claude</span>
           {onCollapse && (
@@ -404,7 +404,7 @@ function AnalysisCostNote({ access }) {
     text =
       left === 1
         ? "Your next re-analysis uses your last credit. Reopening one you've already run is free."
-        : `Re-analyses use 2 credits: ${left} of ${c.max} left. Reopening one you've already run is free.`;
+        : `Re-analyses use ${CREDIT_COST.reanalysis} credits: ${left} of ${c.max} left. Reopening one you've already run is free.`;
   } else if (access.tab) {
     const closes = new Date(access.tab.closesAt).toLocaleString("en-US", {
       weekday: "short",
@@ -413,7 +413,7 @@ function AnalysisCostNote({ access }) {
     });
     text = (
       <>
-        Re-analyses add <strong>+$0.50</strong> to your tab: <strong>{dollars(access.tab.usedCents)}</strong> of{" "}
+        Re-analyses add <strong>+{dollars(REANALYSIS_PRICE)}</strong> to your tab: <strong>{dollars(access.tab.usedCents)}</strong> of{" "}
         {dollars(access.tab.holdCents)} so far, charged {closes} (when the hold lifts). Reopening one you&apos;ve
         already run is free.
       </>
@@ -421,7 +421,8 @@ function AnalysisCostNote({ access }) {
   } else {
     text = (
       <>
-        Re-analyses are <strong>+$0.50</strong> each, on a $5 hold that&apos;s charged once for what you use.
+        Re-analyses are <strong>+{dollars(REANALYSIS_PRICE)}</strong> each, on a {dollars(TAB_HOLD)} hold that&apos;s
+        charged once for what you use.
         Reopening one you&apos;ve already run is free.
       </>
     );
