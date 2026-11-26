@@ -95,13 +95,18 @@ export const PREFERENCES = [
     summary: (v) => `${v}+ baths`,
     check: (l, v) => (l.baths == null ? null : l.baths >= v),
   },
-  amenityPreference(
-    "available",
-    "Still available",
-    "available",
-    "Still available to rent",
-    "The AI checks every home's listing page for this anyway, and never recommends one that's taken. As a must-have, only homes confirmed available are recommended; otherwise unconfirmed ones can be too."
-  ),
+  {
+    // Both modes: still for rent, or still for sale (not sold or pending).
+    ...amenityPreference(
+      "available",
+      "Still available",
+      "available",
+      "",
+      "The AI checks every home's listing page for this anyway, and never recommends one that's taken, sold, or pending. As a must-have, only homes confirmed available are recommended; otherwise unconfirmed ones can be too."
+    ),
+    modes: ["rent", "buy"],
+    summary: (v, mode) => (mode === "buy" ? "Still for sale (not sold or pending)" : "Still available to rent"),
+  },
   amenityPreference("laundry", "In-unit laundry", "laundry", "Washer and dryer in the unit"),
   amenityPreference("ac", "Air conditioning", "airConditioning", "Air conditioning"),
   amenityPreference("heat", "Heat included", "heatIncluded", "Heat included in rent"),

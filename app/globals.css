@@ -2857,17 +2857,22 @@ h3 {
 }
 
 .plan ul {
-  margin: 20px 0 24px;
+  margin: 20px 0 16px;
   padding-left: 20px;
-  flex: 1;
 }
 
 .plan li {
   margin-bottom: 6px;
 }
 
+/* Every plan's button sits at the bottom of its card, level with the others. */
 .plan .btn {
   text-align: center;
+  margin-top: auto;
+}
+
+.plan .plan-note {
+  margin: 0 0 20px;
 }
 
 /* Closing CTA */

@@ -15,6 +15,13 @@ export const AMENITY_FEATURES = [
 
 export const AMENITY_STATUSES = ["yes", "no", "unknown"];
 
+// What the AI looks up for each mode: everything above for rentals; for homes
+// for sale, whether it's still for sale (the rest are rental questions).
+export function featuresFor(mode) {
+  if (mode === "rent") return AMENITY_FEATURES;
+  return AMENITY_FEATURES.filter((f) => f.key === "available").map((f) => ({ ...f, label: "Still for sale", short: "For sale" }));
+}
+
 // Same address written slightly differently -> same key.
 export function addressKey(address = "") {
   return String(address)

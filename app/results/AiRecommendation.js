@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { formatFacts, formatMiles, formatPrice } from "./format";
 import AiPreferences from "./AiPreferences";
 import PayButton, { HoldNotice } from "./Payment";
-import { AMENITY_FEATURES, sourceName } from "./amenities";
+import { featuresFor, sourceName } from "./amenities";
 import { CREDIT_COST, dollars, REANALYSIS_PRICE, TAB_HOLD } from "../../lib/prices";
 
 
@@ -430,9 +430,9 @@ function AnalysisCostNote({ access }) {
   return text ? <p className="panel-muted pay-note">{text}</p> : null;
 }
 
-// Steps shown while the analysis runs. Rentals take longer: the AI also looks
-// up amenities on the web. With the user's own priorities it looks those up
-// too (rent or buy).
+// Steps shown while the analysis runs. The AI checks listing pages on the web
+// (still available? facts right?); for rentals it also looks up amenities, and
+// with the user's own priorities it looks those up too.
 const LOADING_STEPS = {
   rent: [
     "Comparing rents in your radius…",
@@ -444,10 +444,18 @@ const LOADING_STEPS = {
     "Weighing what it found against your priorities…",
     "Writing up the picks…",
   ],
-  buy: ["Comparing homes in your radius…", "Checking prices per square foot…", "Weighing your priorities…", "Writing up the picks…"],
+  buy: [
+    "Comparing homes in your radius…",
+    "Picking the strongest candidates…",
+    "Checking each home is still for sale…",
+    "Checking listing pages match the data…",
+    "Weighing what it found against your priorities…",
+    "Writing up the picks…",
+  ],
   buyCustom: [
     "Comparing homes in your radius…",
     "Picking the strongest candidates…",
+    "Checking each home is still for sale…",
     "Looking up your own priorities on listing pages…",
     "Reading home details and descriptions…",
     "Weighing what it found against your priorities…",
@@ -481,7 +489,7 @@ function LoadingMessage({ mode, custom = false }) {
             ? "Rentals take 1–3 minutes: the AI checks listing pages for amenities."
             : custom
               ? "This takes 1–2 minutes: the AI checks listing pages for your own priorities."
-              : "This usually takes under a minute."}{" "}
+              : "This takes about a minute: the AI checks each listing page."}{" "}
           {seconds >= 5 && `${seconds}s`}
         </p>
       </div>
@@ -493,12 +501,12 @@ const STATUS_MARK = { yes: "✓", no: "✗", unknown: "?" };
 
 const chipText = (s) => (s.length > 28 ? `${s.slice(0, 27)}…` : s);
 
-// What the AI found on the web about one home: its amenities (rentals) and
-// the user's own priorities. A row of chips, and a collapsed list with each
-// detail and the pages it came from.
+// What the AI found on the web about one home: whether it's still available,
+// its amenities (rentals), and the user's own priorities. A row of chips, and
+// a collapsed list with each detail and the pages it came from.
 function AmenityList({ amenities, custom, mode }) {
   const items = [
-    ...(amenities?.features ? AMENITY_FEATURES.map((f) => ({ ...f, ...amenities.features[f.key] })) : []),
+    ...(amenities?.features ? featuresFor(mode).map((f) => ({ ...f, ...amenities.features[f.key] })) : []),
     ...(custom?.items || []).map((c) => ({
       key: `custom:${c.priority}`,
       label: c.priority,
@@ -513,7 +521,8 @@ function AmenityList({ amenities, custom, mode }) {
     // "Garage and fenced yard: not found online."
     const names = (custom?.items || []).map((c) => c.priority);
     const customText = names.length > 3 ? "your own priorities" : names.join(names.length === 2 ? " and " : ", ");
-    const what = [amenities?.features && "Availability, laundry, utilities, parking and pets", customText]
+    const lookedUp = mode === "buy" ? "whether it's still for sale" : "availability, laundry, utilities, parking and pets";
+    const what = [amenities?.features && lookedUp, customText]
       .filter(Boolean)
       .join(" and ");
     return (

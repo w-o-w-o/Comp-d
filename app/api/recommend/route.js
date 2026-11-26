@@ -23,7 +23,7 @@ import {
   parsePreferences,
 } from "../../results/preferences";
 
-// Area lookups plus the AI call (with web research for rentals) can take a
+// Area lookups plus the AI call (with web research on listing pages) can take a
 // few minutes.
 export const maxDuration = 300;
 
@@ -139,9 +139,11 @@ export async function POST(request) {
     // Per-home facts the priorities check: distance to schools (computed
     // here), and walkability (one EPA lookup per spot, so only for the
     // nearest homes, and only when the user asked for it).
-    // Rental amenities already looked up on the web (saved for 7 days).
-    const savedAmenities =
-      mode === "rent" ? await getSavedAmenities([address, ...nearby.map((l) => l.address)]) : new Map();
+    // What the AI already looked up on the web (saved for 7 days): whether
+    // each home is still available, and for rentals, its amenities.
+    const savedAmenities = await getSavedAmenities([address, ...nearby.map((l) => l.address)], mode).catch(
+      () => new Map()
+    );
     const subjectAmenities = savedAmenities.get(addressKey(address)) || null;
 
     // Homes whose listing page was already found (in the last 7 days) to be

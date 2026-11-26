@@ -19,7 +19,7 @@ const steps = [
   },
   {
     title: "Get a clear verdict",
-    text: "The AI tells you if it's a good deal, fair, or overpriced, and which nearby homes are better value, with the facts behind every pick.",
+    text: "The AI tells you if it's a good deal, fair, or overpriced, and which nearby homes are better value. It checks each pick's listing page, so you don't chase homes that are already taken.",
   },
 ];
 
@@ -60,8 +60,13 @@ const categories = [
     source: "RentCast, listing pages",
   },
   {
+    name: "Listing check",
+    detail: "Whether each home is still for rent or for sale, and whether its listing page matches the data (bedrooms, price, size)",
+    source: "Listing pages, linked",
+  },
+  {
     name: "Rental amenities",
-    detail: "Whether it's still available, in-unit laundry, A/C, parking, pets, and whether heat, water, or Wi-Fi is included",
+    detail: "In-unit laundry, A/C, parking, pets, and whether heat, water, or Wi-Fi is included",
     source: "Listing pages, linked",
   },
   {
@@ -245,11 +250,11 @@ export default function Home() {
                       <li key={f}>{f}</li>
                     ))}
                   </ul>
+                  {p.note && <p className="plan-note">{p.note}</p>}
                   {/* Plain <a>: checkout is a server redirect to Stripe, not a page. */}
                   <a href={p.href} className={`btn${p.featured ? "" : " btn-ghost"}`}>
                     {p.cta}
                   </a>
-                  {p.note && <p className="plan-note">{p.note}</p>}
                 </div>
               ))}
             </div>
