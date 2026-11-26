@@ -428,6 +428,66 @@ h3 {
   background: var(--bg-alt);
 }
 
+/* "No rentals in this area" over the map, just under Map/Satellite. */
+/* Centered in the map space between the side panels (400px each, 340px on
+   medium screens); on phones the panel covers the top, so it sits at the bottom. */
+.empty-banner {
+  position: absolute;
+  top: 64px;
+  left: 432px;
+  right: 16px;
+  margin-inline: auto;
+  z-index: 4;
+  width: fit-content;
+  max-width: 520px;
+  display: grid;
+  gap: 6px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.empty-banner-with-ai {
+  right: 432px;
+}
+
+@media (min-width: 761px) and (max-width: 1199px) {
+  .empty-banner {
+    left: 372px;
+  }
+
+  .empty-banner-with-ai {
+    right: 372px;
+  }
+}
+
+@media (max-width: 760px) {
+  .empty-banner {
+    top: auto;
+    bottom: 24px;
+    left: 8px;
+    right: 8px;
+  }
+}
+
+.empty-banner p {
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.empty-banner-main {
+  background: #d9534f;
+  color: #ffffff;
+}
+
+.empty-banner-free {
+  background: #2fa77a;
+  color: #ffffff;
+}
+
 .results-panel {
   position: absolute;
   top: 16px;

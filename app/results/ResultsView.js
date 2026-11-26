@@ -410,6 +410,17 @@ export default function ResultsView({ address, placeId, initialRadius, initialMo
             <PanToListing listing={selected} />
           </Map>
         )}
+        {ready && stage === "results" && comps.status === "ready" && comps.nearby.length === 0 && (
+          <div className={`empty-banner${wide && !aiCollapsed ? " empty-banner-with-ai" : ""}`} role="status">
+            <p className="empty-banner-main">
+              No {mode === "rent" ? "rentals" : "homes for sale"} in this area. Try a wider radius or a different search.
+            </p>
+            {/* The analysis included with the search is still there to use. */}
+            {access?.aiIncludedLeft && !ai.ranNew && !access.demo && access.source !== "full" && (
+              <p className="empty-banner-free">You still have one free AI analysis left!</p>
+            )}
+          </div>
+        )}
       </div>
 
       {stage !== "results" && (
